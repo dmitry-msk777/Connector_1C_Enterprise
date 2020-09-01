@@ -3,6 +3,7 @@ package connector
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -66,16 +67,6 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 		return nil, err
 	}
 
-	// msgs, err := EngineCRM.RabbitMQ_channel.Consume(
-	// 	q.Name, // queue
-	// 	"",     // consumer
-	// 	true,   // auto-ack
-	// 	false,  // exclusive
-	// 	false,  // no-local
-	// 	false,  // no-wait
-	// 	nil,    // args
-	// )
-
 	msgs, err := Connector.RabbitMQ_channel.Consume(
 		q.Name, // queue
 		"",     // consumer
@@ -90,29 +81,22 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 		fmt.Println("Failed to register a consumer: ", err)
 		return nil, err
 	}
-	//////////////////////////////////////////////////////////////////////////
-	//forever := make(chan bool)
 
-	// go func() {
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	// 	for d := range msgs {
+	// 1. Для промышленного использования рекомендую запустить горутину, где
+	// получать данные из канала методом range передавая эти данные в
+	// опубликованный в 1С http сервис.
+	// 2. В процедуру добавлено замедление т.к на тестовом RabbitMQ наблюдались перебои
+	// с получением сооббщений, сейчас все ок
+	// 3. Так же я вынужден разрывать соединение, чтобы при завершении на строне RabbitMQ
+	// не отставалось потребителя, возможно это можно сделать какой-то функцией, убить потребитель
+	// после завершения, а не убивать все соединение.
 
-	// 		Customer_struct := rootsctuct.Customer_struct{}
-
-	// 		err = json.Unmarshal(d.Body, &Customer_struct)
-	// 		if err != nil {
-	// 			EngineCRM.LoggerCRM.ErrorLogger.Println(err.Error())
-	// 		}
-	// 		customer_map_json[Customer_struct.Customer_id] = Customer_struct
-	// 		fmt.Println("Customer_struct.Customer_id = ", Customer_struct.Customer_id)
-	// 	}
-
-	// }()
-
-	//signals := make(chan bool)
-	///////////////////////////////////////////////////////////
 	go func() {
 		for {
+			time.Sleep(1000 * time.Millisecond)
 			select {
 			case msg := <-msgs:
 				fmt.Println("msg = ", msg)
@@ -125,28 +109,17 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 
 				customer_map_json[Customer_struct.Customer_id] = Customer_struct
 
-				//msg.Ack(false)
-
-				// if Customer_struct.Customer_id != "" {
-				// 	customer_map_json[Customer_struct.Customer_id] = Customer_struct
-				// }
-
-				//fmt.Println("Customer_struct.Customer_id = ", Customer_struct.Customer_id)
-
-			// case <-signals:
-			// 	return
 			default:
-				//fmt.Println("<-- loop broke!")
-				return // exit break loop
+
+				wg.Done()
+				return
 			}
 		}
 	}()
 
-	/////////////////////////////////////////////////////////////////////
+	wg.Wait()
 
-	time.Sleep(10000 * time.Millisecond)
 	Connector.RabbitMQ_channel.Close()
-	//Connector.RabbitMQ_channel = nil
 	Connector.InitRabbitMQ(rootsctuct.Global_settingsV)
 
 	return customer_map_json, nil
