@@ -19,4 +19,4 @@
 __debug_bin
 
 # Logs example
-logs/*.txt
+# logs/*.txt
