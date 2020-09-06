@@ -22,7 +22,7 @@ type Connector struct {
 	LoggerCRM        rootsctuct.LoggerCRM
 }
 
-func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settings) {
+func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settings) error {
 
 	Connector.DataBaseType = Global_settings.DataBaseType
 	if Global_settings.DataBaseType == "" {
@@ -32,12 +32,19 @@ func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settin
 
 	Connector.Global_settings = Global_settings
 
+	err := Connector.InitDataBase()
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 func (Connector *Connector) InitDataBase() error {
 
-	if Connector.Global_settings.UseRabbitMQ && Connector.RabbitMQ_channel == nil {
-		Connector.InitRabbitMQ(rootsctuct.Global_settingsV)
+	if Connector.Global_settings.UseRabbitMQ {
+		Connector.InitRabbitMQ()
 		//go RabbitMQ_Consumer()
 	}
 
@@ -120,7 +127,7 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 	wg.Wait()
 
 	Connector.RabbitMQ_channel.Close()
-	Connector.InitRabbitMQ(rootsctuct.Global_settingsV)
+	Connector.InitRabbitMQ()
 
 	return customer_map_json, nil
 
@@ -168,14 +175,15 @@ func (Connector *Connector) SendInQueue(Customer_struct rootsctuct.Customer_stru
 
 }
 
-func (Connector *Connector) InitRabbitMQ(Global_settings rootsctuct.Global_settings) error {
+func (Connector *Connector) InitRabbitMQ() error {
 
 	// Experimenting with RabbitMQ on your workstation? Try the community Docker image:
 	// docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
-	conn, err := amqp.Dial(Global_settings.AddressRabbitMQ) //5672
+	conn, err := amqp.Dial(Connector.Global_settings.AddressRabbitMQ) //5672
 	if err != nil {
 		Connector.LoggerCRM.ErrorLogger.Println("Failed to connect to RabbitMQ")
+		Connector.RabbitMQ_channel = nil
 		return err
 	}
 	//defer conn.Close()
@@ -183,6 +191,7 @@ func (Connector *Connector) InitRabbitMQ(Global_settings rootsctuct.Global_setti
 	ch, err := conn.Channel()
 	if err != nil {
 		Connector.LoggerCRM.ErrorLogger.Println("Failed to open a channel")
+		Connector.RabbitMQ_channel = nil
 		return err
 	}
 	//defer ch.Close()

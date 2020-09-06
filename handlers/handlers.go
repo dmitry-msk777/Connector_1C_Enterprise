@@ -29,16 +29,16 @@ func Settings(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 
-		connector.ConnectorV.Global_settings.AddressRabbitMQ = r.FormValue("AddressRabbitMQ")
-		connector.ConnectorV.Global_settings.DataBaseType = r.FormValue("DataBaseType")
+		rootsctuct.Global_settingsV.AddressRabbitMQ = r.FormValue("AddressRabbitMQ")
+		rootsctuct.Global_settingsV.DataBaseType = r.FormValue("DataBaseType")
 
 		if r.FormValue("UseRabbitMQ") == "on" {
-			connector.ConnectorV.Global_settings.UseRabbitMQ = true
+			rootsctuct.Global_settingsV.UseRabbitMQ = true
 		} else {
-			connector.ConnectorV.Global_settings.UseRabbitMQ = false
+			rootsctuct.Global_settingsV.UseRabbitMQ = false
 		}
 
-		connector.ConnectorV.SetSettings(connector.ConnectorV.Global_settings)
+		connector.ConnectorV.SetSettings(rootsctuct.Global_settingsV)
 
 		err := connector.ConnectorV.InitDataBase()
 		if err != nil {
