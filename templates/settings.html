@@ -22,6 +22,33 @@
 			</div>
 
 			<div>
+				<label>ElasticSearchAdress9200</label>
+				{{if .ElasticSearchAdress9200}}
+				<input type="text" class="form-control" id="ElasticSearchAdress9200" name="ElasticSearchAdress9200" value="{{.ElasticSearchAdress9200}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="ElasticSearchAdress9200" name="ElasticSearchAdress9200"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
+				<label>ElasticSearchAdress9300</label>
+				{{if .ElasticSearchAdress9300}}
+				<input type="text" class="form-control" id="ElasticSearchAdress9300" name="ElasticSearchAdress9300" value="{{.ElasticSearchAdress9300}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="ElasticSearchAdress9300" name="ElasticSearchAdress9300"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
+				<label>ElasticSearchIndexName</label>
+				{{if .ElasticSearchIndexName}}
+				<input type="text" class="form-control" id="ElasticSearchIndexName" name="ElasticSearchIndexName" value="{{.ElasticSearchIndexName}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="ElasticSearchIndexName" name="ElasticSearchIndexName"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
 				<label>DataBaseType</label>
 				<select id="DataBaseType" name="DataBaseType" class="form-control">
 					{{if .DataBaseType}}

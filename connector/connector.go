@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -9,6 +10,9 @@ import (
 	"github.com/streadway/amqp"
 
 	"encoding/json"
+
+	"github.com/beevik/etree"
+	"github.com/olivere/elastic"
 
 	rootsctuct "github.com/dmitry-msk777/Connector_1C_Enterprise/rootdescription"
 )
@@ -199,4 +203,289 @@ func (Connector *Connector) InitRabbitMQ() error {
 	Connector.RabbitMQ_channel = ch
 
 	return nil
+}
+
+func (Connector *Connector) ParseXMLFrom1C(body []byte) ([]rootsctuct.Log1C, error) {
+	doc := etree.NewDocument()
+
+	if err := doc.ReadFromBytes(body); err != nil {
+		return nil, err
+	}
+
+	// var customer_map_xml = make(map[string]rootsctuct.Customer_struct)
+	var Log1C_slice []rootsctuct.Log1C
+
+	// Custromers := doc.SelectElement("Custromers")
+	EventLog := doc.SelectElement("v8e:EventLog")
+
+	// for _, Custromer := range Custromers.SelectElements("Custromer") {
+
+	for _, Event := range EventLog.SelectElements("v8e:Event") {
+
+		// 	Customer_struct := rootsctuct.Customer_struct{}
+		// 	//fmt.Println("CHILD element:", Custromer.Tag)
+		Log1C := rootsctuct.Log1C{}
+
+		if v8e_Level := Event.SelectElement("v8e:Level"); v8e_Level != nil {
+			//value := v8e_Level.SelectAttrValue("value", "unknown")
+			Log1C.Level = v8e_Level.Text()
+			//Log1C.Level = v8e_Level.Child[0].Data
+		}
+
+		if v8e_Date := Event.SelectElement("v8e:Date"); v8e_Date != nil {
+			Log1C.Date = v8e_Date.Text()
+		}
+
+		if v8e_ApplicationName := Event.SelectElement("v8e:ApplicationName"); v8e_ApplicationName != nil {
+			Log1C.ApplicationName = v8e_ApplicationName.Text()
+		}
+
+		if v8e_ApplicationPresentation := Event.SelectElement("v8e:ApplicationPresentation"); v8e_ApplicationPresentation != nil {
+			Log1C.ApplicationPresentation = v8e_ApplicationPresentation.Text()
+		}
+
+		if v8e_Event := Event.SelectElement("v8e:Event"); v8e_Event != nil {
+			Log1C.Event = v8e_Event.Text()
+		}
+
+		if v8e_EventPresentation := Event.SelectElement("v8e:EventPresentation"); v8e_EventPresentation != nil {
+			Log1C.EventPresentation = v8e_EventPresentation.Text()
+		}
+
+		if v8e_User := Event.SelectElement("v8e:User"); v8e_User != nil {
+			Log1C.User = v8e_User.Text()
+		}
+
+		if v8e_UserName := Event.SelectElement("v8e:UserName"); v8e_UserName != nil {
+			Log1C.UserName = v8e_UserName.Text()
+		}
+
+		if v8e_Computer := Event.SelectElement("v8e:Computer"); v8e_Computer != nil {
+			Log1C.Computer = v8e_Computer.Text()
+		}
+
+		if v8e_Metadata := Event.SelectElement("v8e:Metadata"); v8e_Metadata != nil {
+			Log1C.Metadata = v8e_Metadata.Text()
+		}
+
+		if v8e_MetadataPresentation := Event.SelectElement("v8e:MetadataPresentation"); v8e_MetadataPresentation != nil {
+			Log1C.MetadataPresentation = v8e_MetadataPresentation.Text()
+		}
+
+		if v8e_Comment := Event.SelectElement("v8e:Comment"); v8e_Comment != nil {
+			Log1C.Comment = v8e_Comment.Text()
+		}
+
+		if v8e_Data := Event.SelectElement("v8e:Data"); v8e_Data != nil {
+			Log1C.Data = v8e_Data.Text()
+		}
+
+		if v8e_DataPresentation := Event.SelectElement("v8e:DataPresentation"); v8e_DataPresentation != nil {
+			Log1C.DataPresentation = v8e_DataPresentation.Text()
+		}
+
+		if v8e_TransactionStatus := Event.SelectElement("v8e:TransactionStatus"); v8e_TransactionStatus != nil {
+			Log1C.TransactionStatus = v8e_TransactionStatus.Text()
+		}
+
+		if v8e_TransactionID := Event.SelectElement("v8e:TransactionID"); v8e_TransactionID != nil {
+			Log1C.TransactionID = v8e_TransactionID.Text()
+		}
+
+		if v8e_Connection := Event.SelectElement("v8e:Connection"); v8e_Connection != nil {
+			Log1C.Connection = v8e_Connection.Text()
+		}
+
+		if v8e_Session := Event.SelectElement("v8e:Session"); v8e_Session != nil {
+			Log1C.Session = v8e_Session.Text()
+		}
+
+		if v8e_ServerName := Event.SelectElement("v8e:ServerName"); v8e_ServerName != nil {
+			Log1C.ServerName = v8e_ServerName.Text()
+		}
+
+		if v8e_Port := Event.SelectElement("v8e:Port"); v8e_Port != nil {
+			Log1C.Port = v8e_Port.Text()
+		}
+
+		if v8e_SyncPort := Event.SelectElement("v8e:SyncPort"); v8e_SyncPort != nil {
+			Log1C.SyncPort = v8e_SyncPort.Text()
+		}
+
+		Log1C_slice = append(Log1C_slice, Log1C)
+	}
+
+	//fmt.Println(Log1C_slice)
+
+	return Log1C_slice, nil
+}
+
+func (Connector *Connector) SendInElastichSearch(Log1C_slice []rootsctuct.Log1C) error {
+
+	// clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+	// 	elastic.SetURL("http://127.0.0.1:9200", "http://127.0.0.1:9300"))
+	//// elastic.SetBasicAuth("user", "secret"))
+
+	clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+		elastic.SetURL(Connector.Global_settings.ElasticSearchAdress9200, Connector.Global_settings.ElasticSearchAdress9300))
+
+	if err != nil {
+		return err
+	}
+
+	// index example "transactionid"
+	exists, err := clientElasticSerch.IndexExists(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// Create a new index.
+		mapping := `
+				{
+					"settings":{
+						"number_of_shards":1,
+						"number_of_replicas":0
+					},
+					"mappings":{
+						"doc":{
+							"properties":{
+								"Level":{
+									"type":"text"
+								},
+								"Date":{
+									"type":"text"
+								},
+								"ApplicationName":{
+									"type":"text"
+								},
+								"ApplicationPresentation":{
+									"type":"text"
+								},
+								"Event":{
+									"type":"text"
+								},
+								"EventPresentation":{
+									"type":"text"
+								},
+								"User":{
+									"type":"text"
+								},
+								"UserName":{
+									"type":"text"
+								},
+								"Computer":{
+									"type":"text"
+								},
+								"Metadata":{
+									"type":"text"
+								},
+								"MetadataPresentation":{
+									"type":"text"
+								},
+								"Comment":{
+									"type":"text"
+								},
+								"Data":{
+									"type":"text"
+								},
+								"DataPresentation":{
+									"type":"text"
+								},
+								"TransactionStatus":{
+									"type":"text"
+								},
+								"TransactionID":{
+									"type":"text",
+									"store": true,
+									"fielddata": true
+								},
+								"Connection":{
+									"type":"text"
+								},
+								"Session":{
+									"type":"text"
+								},
+								"ServerName":{
+									"type":"text"
+								},
+								"Port":{
+									"type":"text"
+								},
+								"SyncPort":{
+									"type":"text"
+								}
+						}
+					}
+				}
+				}`
+
+		//createIndex, err := clientElasticSerch.CreateIndex("TransactionID").Body(mapping).IncludeTypeName(true).Do(context.Background())
+		createIndex, err := clientElasticSerch.CreateIndex(Connector.Global_settings.ElasticSearchIndexName).Body(mapping).Do(context.Background())
+		if err != nil {
+			return err
+		}
+		if !createIndex.Acknowledged {
+		}
+	}
+
+	for _, p := range Log1C_slice {
+
+		put1, err := clientElasticSerch.Index().
+			Index("transactionid").
+			Type("doc").
+			Id(p.TransactionID).
+			BodyJson(p).
+			Do(context.Background())
+		if err != nil {
+			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			//fmt.Fprintf(w, err.Error())
+			return err
+		}
+		fmt.Printf("Indexed record %s to index %s, type %s\n", put1.Id, put1.Index, put1.Type)
+
+	}
+
+	// Flush to make sure the documents got written.
+	_, err = clientElasticSerch.Flush().Index(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	// // +++ Search with a term query
+	// termQuery := elastic.NewTermQuery("TransactionID", "11.09.2020 15:12:07 (1446734)")
+	// searchResult, err := clientElasticSerch.Search().
+	// 	Index("transactionid").      // search in index "crm_customer"
+	// 	Query(termQuery).            // specify the query
+	// 	Sort("TransactionID", true). // sort by "user" field, ascending
+	// 	From(0).Size(10).            // take documents 0-9
+	// 	Pretty(true).                // pretty print request and response JSON
+	// 	Do(context.Background())     // execute
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // +++ searchResult is of type SearchResult and returns hits, suggestions,
+	// // and all kinds of other information from Elasticsearch.
+	// fmt.Printf("Query took %d milliseconds\n", searchResult.TookInMillis)
+
+	// var ttyp rootsctuct.Log1C
+	// for _, item := range searchResult.Each(reflect.TypeOf(ttyp)) {
+	// 	t := item.(rootsctuct.Log1C)
+	// 	//fmt.Fprintf(w, "customer_id: %s customer_name: %s", t.TransactionID, t.TransactionID)
+	// 	fmt.Printf("TransactionID: %s", t.TransactionID)
+	// }
+	// fmt.Printf("Found a total of %d records\n", searchResult.TotalHits())
+
+	// // // +++ Delete an index.
+	// // deleteIndex, err := clientElasticSerch.DeleteIndex("transactionid").Do(context.Background())
+	// // if err != nil {
+	// // 	return err
+	// // }
+	// // if !deleteIndex.Acknowledged {
+	// // 	// Not acknowledged
+	// // }
+
+	return nil
+
 }

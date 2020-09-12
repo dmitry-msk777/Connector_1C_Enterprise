@@ -25,9 +25,12 @@ type Address_Struct struct {
 }
 
 type Global_settings struct {
-	DataBaseType    string
-	AddressRabbitMQ string
-	UseRabbitMQ     bool
+	DataBaseType            string
+	AddressRabbitMQ         string
+	UseRabbitMQ             bool
+	ElasticSearchAdress9200 string
+	ElasticSearchAdress9300 string
+	ElasticSearchIndexName  string
 }
 
 func (GlobalSettings *Global_settings) SaveSettingsOnDisk() {
@@ -98,4 +101,28 @@ type ViewData struct {
 	User         string
 	DataBaseType string
 	Customers    map[string]Customer_struct
+}
+
+type Log1C struct {
+	Level                   string
+	Date                    string
+	ApplicationName         string
+	ApplicationPresentation string
+	Event                   string
+	EventPresentation       string
+	User                    string
+	UserName                string
+	Computer                string
+	Metadata                string
+	MetadataPresentation    string
+	Comment                 string
+	Data                    string
+	DataPresentation        string
+	TransactionStatus       string
+	TransactionID           string
+	Connection              string
+	Session                 string
+	ServerName              string
+	Port                    string
+	SyncPort                string
 }
