@@ -178,6 +178,55 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func Api_json(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "GET" {
+
+		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
+
+		if err != nil {
+			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		JsonString, err := json.Marshal(customer_map_s)
+		if err != nil {
+			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, "error json:"+err.Error())
+		}
+		fmt.Fprintf(w, string(JsonString))
+
+	} else {
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+		err = json.Unmarshal(body, &customer_map_json)
+		if err != nil {
+			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		for _, p := range customer_map_json {
+			err := connector.ConnectorV.AddChangeOneRow(connector.ConnectorV.DataBaseType, p, rootsctuct.Global_settingsV)
+			if err != nil {
+				connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+				fmt.Println(err.Error())
+			}
+		}
+
+		fmt.Fprintf(w, string(body))
+
+	}
+
+}
+
 func StratHandlers() {
 
 	router := mux.NewRouter()
@@ -187,6 +236,7 @@ func StratHandlers() {
 
 	router.HandleFunc("/rabbitMQ_1C", RabbitMQ_1C)
 	router.HandleFunc("/log1C_xml", log1C_xml)
+	router.HandleFunc("/api_json", Api_json)
 
 	http.Handle("/", router)
 	http.ListenAndServe(":8181", nil)

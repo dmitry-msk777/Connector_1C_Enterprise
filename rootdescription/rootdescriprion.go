@@ -27,6 +27,8 @@ type Address_Struct struct {
 type Global_settings struct {
 	DataBaseType            string
 	AddressRabbitMQ         string
+	AddressRedis            string
+	AddressMongoBD          string
 	UseRabbitMQ             bool
 	ElasticSearchAdress9200 string
 	ElasticSearchAdress9300 string

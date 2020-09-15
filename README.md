@@ -13,3 +13,7 @@
 ### ElasticSearch
 Добавлена возможность выгружать в API журнал регистрации из 1С в формате XML  
 Описание: https://infostart.ru/public/1290968/
+
+### NoSQL (MongoDB, Redis)
+Добавление, Измениние данных, удаление  
+Описание: https://infostart.ru/public/1293220/
