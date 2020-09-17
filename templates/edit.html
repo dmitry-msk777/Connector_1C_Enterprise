@@ -1,0 +1,27 @@
+{{ define "edit" }}
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Customer card</title>
+    </head>
+    <body>
+	{{ template "header" }}
+        <h3>Edit Product</h3>
+        <form method="POST">
+            <input type="hidden" name="customer_id" value="{{.Customer_id}}" />
+
+            <label>Customer name</label><br>
+            <input type="text" name="customer_name" value="{{.Customer_name}}" /><br><br>
+
+            <label>Customer type</label><br>
+            <input type="text" name="customer_type" value="{{.Customer_type}}" /><br><br>
+
+            <label>Customer email</label><br>
+            <input type="text" name="customer_email" value="{{.Customer_email}}" /><br><br>
+
+            <input type="submit" value="Send" />
+        </form>
+    </body>
+</html>
+{{ end }}

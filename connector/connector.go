@@ -724,3 +724,84 @@ func GetCollectionMongoBD(Database string, Collection string, HostConnect string
 
 	return client.Database(Database).Collection(Collection)
 }
+
+func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_settings rootsctuct.Global_settings) (rootsctuct.Customer_struct, error) {
+
+	Customer_struct_out := rootsctuct.Customer_struct{}
+
+	switch DataBaseType {
+	case "MongoDB":
+
+		err := Connector.CollectionMongoDB.FindOne(context.TODO(), bson.D{{"customer_id", id}}).Decode(&Customer_struct_out)
+		if err != nil {
+			// ErrNoDocuments means that the filter did not match any documents in the collection
+			if err == mongo.ErrNoDocuments {
+				return Customer_struct_out, err
+			}
+		}
+		fmt.Printf("found document %v", Customer_struct_out)
+
+	case "Redis":
+
+		val2, err := Connector.RedisClient.Get(id).Result()
+		if err == redis.Nil {
+			Connector.LoggerCRM.ErrorLogger.Println("key2 does not exist")
+			return Customer_struct_out, err
+		} else if err != nil {
+			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			return Customer_struct_out, err
+		} else {
+			err = json.Unmarshal([]byte(val2), &Customer_struct_out)
+			if err != nil {
+				Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+				return Customer_struct_out, err
+			}
+
+			return Customer_struct_out, nil
+		}
+
+	default:
+		Customer_struct_out = Connector.DemoDBmap[id]
+	}
+
+	return Customer_struct_out, nil
+}
+
+func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_settings rootsctuct.Global_settings) error {
+
+	switch DataBaseType {
+	case "MongoDB":
+
+		res, err := Connector.CollectionMongoDB.DeleteOne(context.TODO(), bson.D{{"customer_id", id}})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("deleted %v documents\n", res.DeletedCount)
+
+	case "Redis":
+
+		//iter := EngineCRMv.RedisClient.Scan(0, "prefix*", 0).Iterator()
+		iter := Connector.RedisClient.Scan(0, id, 0).Iterator()
+		for iter.Next() {
+			err := Connector.RedisClient.Del(iter.Val()).Err()
+			if err != nil {
+				Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+				return err
+			}
+			//fmt.Println(iter.Val())
+		}
+		if err := iter.Err(); err != nil {
+			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			return err
+		}
+
+	default:
+		_, ok := Connector.DemoDBmap[id]
+		if ok {
+			delete(Connector.DemoDBmap, id)
+		}
+	}
+
+	return nil
+
+}

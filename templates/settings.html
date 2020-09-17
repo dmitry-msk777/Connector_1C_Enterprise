@@ -49,6 +49,24 @@
 			</div>
 
 			<div>
+				<label>AddressRedis</label>
+				{{if .AddressRedis}}
+				<input type="text" class="form-control" id="AddressRedis" name="AddressRedis" value="{{.AddressRedis}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="AddressRedis" name="AddressRedis"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
+				<label>AddressMongoBD</label>
+				{{if .AddressMongoBD}}
+				<input type="text" class="form-control" id="AddressMongoBD" name="AddressMongoBD" value="{{.AddressMongoBD}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="AddressMongoBD" name="AddressMongoBD"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
 				<label>DataBaseType</label>
 				<select id="DataBaseType" name="DataBaseType" class="form-control">
 					{{if .DataBaseType}}
