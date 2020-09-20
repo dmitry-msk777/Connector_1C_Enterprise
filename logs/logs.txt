@@ -4,3 +4,23 @@ ERROR: 2020/09/15 23:12:09 rootdescriprion.go:97: Starting the application...
 ERROR: 2020/09/16 01:32:00 rootdescriprion.go:97: Starting the application...
 ERROR: 2020/09/16 02:15:06 rootdescriprion.go:97: Starting the application...
 ERROR: 2020/09/17 18:07:27 rootdescriprion.go:97: Starting the application...
+ERROR: 2020/09/18 00:37:51 rootdescriprion.go:97: Starting the application...
+ERROR: 2020/09/18 00:45:06 rootdescriprion.go:97: Starting the application...
+ERROR: 2020/09/18 00:49:39 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 00:49:39 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 00:49:39 connector.go:621: invalid character 'Ð' looking for beginning of value
+ERROR: 2020/09/18 00:52:39 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 00:52:39 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 00:52:39 connector.go:621: invalid character 'Ð' looking for beginning of value
+ERROR: 2020/09/18 00:57:51 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 00:57:51 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 00:57:51 connector.go:621: invalid character 'Ð' looking for beginning of value
+ERROR: 2020/09/18 00:58:46 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 00:58:46 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 00:58:46 connector.go:621: invalid character 'Ð' looking for beginning of value
+ERROR: 2020/09/18 01:59:05 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 01:59:05 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 01:59:05 connector.go:621: invalid character 'Ð' looking for beginning of value
+ERROR: 2020/09/18 18:04:44 connector.go:621: invalid character 'v' looking for beginning of value
+ERROR: 2020/09/18 18:04:44 connector.go:621: json: cannot unmarshal number into Go value of type rootdescription.Customer_struct
+ERROR: 2020/09/18 18:04:44 connector.go:621: invalid character 'Ð' looking for beginning of value

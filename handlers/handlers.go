@@ -22,7 +22,7 @@ func Settings(w http.ResponseWriter, r *http.Request) {
 
 		tmpl, err := template.ParseFiles("templates/settings.html", "templates/header.html")
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 			return
 		}
@@ -51,7 +51,7 @@ func Settings(w http.ResponseWriter, r *http.Request) {
 
 		err := connector.ConnectorV.InitDataBase()
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 			return
 		}
@@ -69,14 +69,14 @@ func RabbitMQ_1C(w http.ResponseWriter, r *http.Request) {
 		customer_map_json, err := connector.ConnectorV.ConsumeFromQueue()
 
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 			return
 		}
 
 		JsonString, err := json.Marshal(customer_map_json)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, "error json:"+err.Error())
 			return
 		}
@@ -86,7 +86,7 @@ func RabbitMQ_1C(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
@@ -94,7 +94,7 @@ func RabbitMQ_1C(w http.ResponseWriter, r *http.Request) {
 
 		err = json.Unmarshal(body, &customer_map_json)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
@@ -103,7 +103,7 @@ func RabbitMQ_1C(w http.ResponseWriter, r *http.Request) {
 			if connector.ConnectorV.Global_settings.UseRabbitMQ {
 				err = connector.ConnectorV.SendInQueue(p)
 				if err != nil {
-					connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+					connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 					fmt.Fprintf(w, err.Error())
 					return
 				}
@@ -161,20 +161,20 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
 		Log1C_slice, err := connector.ConnectorV.ParseXMLFrom1C(body)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
 		err = connector.ConnectorV.SendInElastichSearch(Log1C_slice)
 
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
@@ -190,14 +190,14 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
 
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 			return
 		}
 
 		JsonString, err := json.Marshal(customer_map_s)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, "error json:"+err.Error())
 		}
 		fmt.Fprintf(w, string(JsonString))
@@ -206,7 +206,7 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
@@ -214,14 +214,14 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 
 		err = json.Unmarshal(body, &customer_map_json)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
 		for _, p := range customer_map_json {
 			err := connector.ConnectorV.AddChangeOneRow(connector.ConnectorV.DataBaseType, p, rootsctuct.Global_settingsV)
 			if err != nil {
-				connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+				connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 				fmt.Println(err.Error())
 			}
 		}
@@ -236,7 +236,7 @@ func List_customer(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/list_customer.html", "templates/header.html")
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -244,7 +244,7 @@ func List_customer(w http.ResponseWriter, r *http.Request) {
 	customer_map_data, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
 
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -261,14 +261,14 @@ func EditPage(w http.ResponseWriter, r *http.Request) {
 	Customer_struct_out, err := connector.ConnectorV.FindOneRow(connector.ConnectorV.DataBaseType, id, rootsctuct.Global_settingsV)
 
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
 
 	tmpl, err := template.ParseFiles("templates/edit.html", "templates/header.html")
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -285,7 +285,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	err := connector.ConnectorV.DeleteOneRow(connector.ConnectorV.DataBaseType, id, rootsctuct.Global_settingsV)
 
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -297,7 +297,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 func EditHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 	}
 
@@ -321,7 +321,7 @@ func Add_change_customer(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/add_change_customer.html", "templates/header.html")
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -342,7 +342,7 @@ func Postform_add_change_customer(w http.ResponseWriter, r *http.Request) {
 	err := connector.ConnectorV.AddChangeOneRow(connector.ConnectorV.DataBaseType, customer_data, rootsctuct.Global_settingsV)
 
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 		fmt.Fprintf(w, err.Error())
 		return
 	}
@@ -357,7 +357,7 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
 
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 			return
 		}
@@ -399,7 +399,7 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
@@ -458,7 +458,7 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 		for _, p := range customer_map_xml {
 			err := connector.ConnectorV.AddChangeOneRow(connector.ConnectorV.DataBaseType, p, rootsctuct.Global_settingsV)
 			if err != nil {
-				connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+				connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 				fmt.Println(err.Error())
 			}
 		}

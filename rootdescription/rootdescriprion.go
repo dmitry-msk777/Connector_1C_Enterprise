@@ -9,7 +9,7 @@ import (
 
 var Global_settingsV Global_settings
 
-var LoggerCRMv LoggerCRM
+var LoggerConnV LoggerConn
 
 type Customer_struct struct {
 	Customer_id    string
@@ -79,22 +79,22 @@ func (GlobalSettings *Global_settings) LoadSettingsFromDisk() {
 	}
 }
 
-type LoggerCRM struct {
+type LoggerConn struct {
 	InfoLogger  *log.Logger
 	ErrorLogger *log.Logger
 }
 
-func (LoggerCRM *LoggerCRM) InitLog() {
+func (LoggerConn *LoggerConn) InitLog() {
 
 	file, err := os.OpenFile("./logs/logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	LoggerCRM.InfoLogger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	LoggerCRM.ErrorLogger = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	LoggerConn.InfoLogger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	LoggerConn.ErrorLogger = log.New(file, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 
-	LoggerCRM.ErrorLogger.Println("Starting the application...")
+	LoggerConn.ErrorLogger.Println("Starting the application...")
 }
 
 type ViewData struct {

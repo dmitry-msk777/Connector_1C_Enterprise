@@ -9,14 +9,14 @@ import (
 
 func main() {
 
-	rootsctuct.LoggerCRMv.InitLog()
-	connector.ConnectorV.LoggerCRM = rootsctuct.LoggerCRMv
+	rootsctuct.LoggerConnV.InitLog()
+	connector.ConnectorV.LoggerConn = rootsctuct.LoggerConnV
 
 	rootsctuct.Global_settingsV.LoadSettingsFromDisk()
 	err := connector.ConnectorV.SetSettings(rootsctuct.Global_settingsV)
 
 	if err != nil {
-		connector.ConnectorV.LoggerCRM.ErrorLogger.Println(err.Error())
+		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 	}
 
 	// if connector.ConnectorV.Global_settings.UseRabbitMQ {

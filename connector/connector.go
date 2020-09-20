@@ -29,7 +29,7 @@ type Connector struct {
 	DataBaseType      string
 	RabbitMQ_channel  *amqp.Channel
 	Global_settings   rootsctuct.Global_settings
-	LoggerCRM         rootsctuct.LoggerCRM
+	LoggerConn        rootsctuct.LoggerConn
 	CollectionMongoDB *mongo.Collection
 	DemoDBmap         map[string]rootsctuct.Customer_struct
 	RedisClient       *redis.Client
@@ -170,7 +170,7 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 
 				err = json.Unmarshal(msg.Body, &Customer_struct)
 				if err != nil {
-					Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+					Connector.LoggerConn.ErrorLogger.Println(err.Error())
 				}
 
 				customer_map_json[Customer_struct.Customer_id] = Customer_struct
@@ -241,7 +241,7 @@ func (Connector *Connector) InitRabbitMQ() error {
 
 	conn, err := amqp.Dial(Connector.Global_settings.AddressRabbitMQ) //5672
 	if err != nil {
-		Connector.LoggerCRM.ErrorLogger.Println("Failed to connect to RabbitMQ")
+		Connector.LoggerConn.ErrorLogger.Println("Failed to connect to RabbitMQ")
 		Connector.RabbitMQ_channel = nil
 		return err
 	}
@@ -249,7 +249,7 @@ func (Connector *Connector) InitRabbitMQ() error {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		Connector.LoggerCRM.ErrorLogger.Println("Failed to open a channel")
+		Connector.LoggerConn.ErrorLogger.Println("Failed to open a channel")
 		Connector.RabbitMQ_channel = nil
 		return err
 	}
@@ -493,7 +493,7 @@ func (Connector *Connector) SendInElastichSearch(Log1C_slice []rootsctuct.Log1C)
 			BodyJson(p).
 			Do(context.Background())
 		if err != nil {
-			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
 			//fmt.Fprintf(w, err.Error())
 			return err
 		}
@@ -595,7 +595,7 @@ func (Connector *Connector) GetAllCustomer(DataBaseType string) (map[string]root
 		cursor1, _, err := ScanCmd.Result()
 
 		if err != nil {
-			Connector.LoggerCRM.ErrorLogger.Println("key2 does not exist")
+			Connector.LoggerConn.ErrorLogger.Println("key2 does not exist")
 			return customer_map_s, err
 		}
 
@@ -607,18 +607,18 @@ func (Connector *Connector) GetAllCustomer(DataBaseType string) (map[string]root
 			//IDString := strconv.FormatInt(int64(i), 10)
 			val2, err := Connector.RedisClient.Get(value).Result()
 			if err == redis.Nil {
-				Connector.LoggerCRM.ErrorLogger.Println("key2 does not exist")
+				Connector.LoggerConn.ErrorLogger.Println("key2 does not exist")
 				continue
 				//fmt.Println("key2 does not exist")
 			} else if err != nil {
-				Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
 				continue
 			} else {
 				//fmt.Println("key2", val2)
 
 				err = json.Unmarshal([]byte(val2), &p)
 				if err != nil {
-					Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+					Connector.LoggerConn.ErrorLogger.Println(err.Error())
 					continue
 				}
 
@@ -745,15 +745,15 @@ func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_se
 
 		val2, err := Connector.RedisClient.Get(id).Result()
 		if err == redis.Nil {
-			Connector.LoggerCRM.ErrorLogger.Println("key2 does not exist")
+			Connector.LoggerConn.ErrorLogger.Println("key2 does not exist")
 			return Customer_struct_out, err
 		} else if err != nil {
-			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
 			return Customer_struct_out, err
 		} else {
 			err = json.Unmarshal([]byte(val2), &Customer_struct_out)
 			if err != nil {
-				Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
 				return Customer_struct_out, err
 			}
 
@@ -785,13 +785,13 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 		for iter.Next() {
 			err := Connector.RedisClient.Del(iter.Val()).Err()
 			if err != nil {
-				Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
 				return err
 			}
 			//fmt.Println(iter.Val())
 		}
 		if err := iter.Err(); err != nil {
-			Connector.LoggerCRM.ErrorLogger.Println(err.Error())
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
 			return err
 		}
 
