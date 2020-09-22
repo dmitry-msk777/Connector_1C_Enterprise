@@ -489,7 +489,7 @@ func StratHandlers() {
 	router.HandleFunc("/postform_add_change_customer", Postform_add_change_customer)
 
 	http.Handle("/", router)
-	http.ListenAndServe(":8181", nil)
 	fmt.Println("Server is listening...")
 
+	http.ListenAndServe(":8181", nil)
 }
