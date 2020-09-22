@@ -3,6 +3,7 @@ package rootdescription
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -56,7 +57,10 @@ func (GlobalSettings *Global_settings) LoadSettingsFromDisk() {
 
 	file, err := os.OpenFile("./settings/config.json", os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		fmt.Println(err)
+		file, err = ioutil.TempFile("", "ConfigJsonlogConnector1C")
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	decoder := json.NewDecoder(file)
@@ -83,7 +87,10 @@ func (LoggerCRM *LoggerCRM) InitLog() {
 
 	file, err := os.OpenFile("./logs/logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Fatal(err)
+		file, err = ioutil.TempFile("", "logCoonector1C")
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	LoggerCRM.InfoLogger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
