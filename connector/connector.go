@@ -1,9 +1,12 @@
 package connector
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
 	"time"
 
@@ -58,7 +61,7 @@ func (Connector *Connector) InitDataBase() error {
 
 	if Connector.Global_settings.UseRabbitMQ {
 		Connector.InitRabbitMQ()
-		//go RabbitMQ_Consumer()
+		go Connector.ConsumeFromQueueFor1C()
 	}
 
 	switch Connector.DataBaseType {
@@ -108,6 +111,83 @@ func (Connector *Connector) InitDataBase() error {
 	}
 
 	return nil
+}
+
+func (Connector *Connector) ConsumeFromQueueFor1C() {
+
+	if Connector.RabbitMQ_channel == nil {
+		err := errors.New("Connection to RabbitMQ not established")
+		Connector.LoggerConn.ErrorLogger.Println(err.Error())
+		//return nil, err
+	}
+
+	var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+	q, err := Connector.RabbitMQ_channel.QueueDeclare(
+		"Customer___add_change", // name
+		false,                   // durable
+		false,                   // delete when unused
+		false,                   // exclusive
+		false,                   // no-wait
+		nil,                     // arguments
+	)
+
+	if err != nil {
+		fmt.Println("Failed to declare a queue: ", err)
+		Connector.LoggerConn.ErrorLogger.Println(err.Error())
+		//return nil, err
+	}
+
+	msgs, err := Connector.RabbitMQ_channel.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+
+	if err != nil {
+		fmt.Println("Failed to register a consumer: ", err)
+		Connector.LoggerConn.ErrorLogger.Println(err.Error())
+		//return nil, err
+	}
+
+	// forever := make(chan bool)
+
+	go func() {
+		for d := range msgs {
+
+			Customer_struct := rootsctuct.Customer_struct{}
+
+			err = json.Unmarshal(d.Body, &Customer_struct)
+			if err != nil {
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			}
+
+			customer_map_json[Customer_struct.Customer_id] = Customer_struct
+
+			bytesRepresentation, err := json.Marshal(Customer_struct)
+			if err != nil {
+				//return err
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			}
+
+			resp, err := http.Post("http://localhost/REST_test/hs/rabbitmq/rabbitmq_json", "application/json", bytes.NewBuffer(bytesRepresentation))
+			if err != nil {
+				//return err
+				Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			}
+
+			body2, _ := ioutil.ReadAll(resp.Body)
+			println(string(body2))
+		}
+	}()
+
+	// log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	// <-forever
+
 }
 
 func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_struct, error) {
@@ -632,6 +712,30 @@ func (Connector *Connector) GetAllCustomer(DataBaseType string) (map[string]root
 
 		return customer_map_s, nil
 
+	case "1C_Enterprise":
+		//resp, err := http.Get("http://localhost/REST_test/hs/exchange/custom_json")
+		resp, err := http.Get("http://localhost/REST_test/hs/exchange/custom_json")
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+		err = json.Unmarshal(body, &customer_map_json)
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return nil, err
+		}
+
+		// for _, p := range customer_map_json {
+		// 	customer_map_s[p.Customer_id] = p
+		// }
+
+		return customer_map_json, nil
+
 	default:
 		return Connector.DemoDBmap, nil
 	}
@@ -684,6 +788,26 @@ func (Connector *Connector) AddChangeOneRow(DataBaseType string, Customer_struct
 		if err != nil {
 			return err
 		}
+
+	case "1C_Enterprise":
+
+		bytesRepresentation, err := json.Marshal(Customer_struct)
+		if err != nil {
+			return err
+		}
+
+		resp, err := http.Post("http://localhost/REST_test/hs/exchange/custom_json", "application/json", bytes.NewBuffer(bytesRepresentation))
+		if err != nil {
+			return err
+		}
+
+		// var result map[string]interface{}
+		// json.NewDecoder(resp.Body).Decode(&result)
+		// fmt.Println(result)
+		// fmt.Println(result["data"])
+
+		body2, _ := ioutil.ReadAll(resp.Body)
+		println(string(body2))
 
 	default:
 		Connector.DemoDBmap[Customer_struct.Customer_id] = Customer_struct
@@ -760,6 +884,49 @@ func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_se
 			return Customer_struct_out, nil
 		}
 
+	case "1C_Enterprise":
+
+		client := &http.Client{}
+
+		req, err := http.NewRequest("GET", "http://localhost/REST_test/hs/exchange/custom_json", nil)
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return Customer_struct_out, err
+		}
+
+		q := req.URL.Query()
+		q.Add("id", id)
+		req.URL.RawQuery = q.Encode()
+
+		fmt.Println(req.URL.String())
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return Customer_struct_out, err
+		}
+
+		defer resp.Body.Close()
+		resp_body, _ := ioutil.ReadAll(resp.Body)
+
+		fmt.Println(resp.Status)
+		fmt.Println(string(resp_body))
+
+		var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+		err = json.Unmarshal(resp_body, &customer_map_json)
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return Customer_struct_out, err
+		}
+
+		for _, p := range customer_map_json {
+			Customer_struct_out = p
+		}
+
+		return Customer_struct_out, nil
+
 	default:
 		Customer_struct_out = Connector.DemoDBmap[id]
 	}
@@ -794,6 +961,37 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 			Connector.LoggerConn.ErrorLogger.Println(err.Error())
 			return err
 		}
+
+	case "1C_Enterprise":
+
+		client := &http.Client{}
+
+		req, err := http.NewRequest("DELETE", "http://localhost/REST_test/hs/exchange/custom_json", nil)
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return err
+		}
+
+		q := req.URL.Query()
+		q.Add("id", id)
+		req.URL.RawQuery = q.Encode()
+
+		fmt.Println(req.URL.String())
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			return err
+		}
+
+		defer resp.Body.Close()
+		resp_body, _ := ioutil.ReadAll(resp.Body)
+
+		fmt.Println(resp.Status)
+		fmt.Println(string(resp_body))
+
+		return nil
 
 	default:
 		_, ok := Connector.DemoDBmap[id]

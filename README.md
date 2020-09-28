@@ -17,3 +17,7 @@
 ### NoSQL (MongoDB, Redis)
 Добавление, Измениние данных, удаление  
 Описание: https://infostart.ru/public/1293220/
+
+### Обмен с HTTP-сервисами платформы 1С (MongoDB, Redis)
+Добавление, Измениние данных, удаление  
+Описание: https://infostart.ru/public/1300482/

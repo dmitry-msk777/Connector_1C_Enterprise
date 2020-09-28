@@ -47,6 +47,8 @@ func Settings(w http.ResponseWriter, r *http.Request) {
 		rootsctuct.Global_settingsV.AddressRedis = r.FormValue("AddressRedis")
 		rootsctuct.Global_settingsV.AddressMongoBD = r.FormValue("AddressMongoBD")
 
+		rootsctuct.Global_settingsV.Enterprise1CAdress = r.FormValue("Enterprise1CAdress")
+
 		connector.ConnectorV.SetSettings(rootsctuct.Global_settingsV)
 
 		err := connector.ConnectorV.InitDataBase()
@@ -185,7 +187,8 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 
 func Api_json(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 
 		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
 
@@ -202,7 +205,7 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(w, string(JsonString))
 
-	} else {
+	case "POST":
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -227,6 +230,40 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Fprintf(w, string(body))
+
+	case "PUT":
+
+		fmt.Fprintf(w, "PUT")
+
+	case "DELETE":
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+		err = json.Unmarshal(body, &customer_map_json)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		for _, p := range customer_map_json {
+			err := connector.ConnectorV.DeleteOneRow(connector.ConnectorV.DataBaseType, p.Customer_id, rootsctuct.Global_settingsV)
+			if err != nil {
+				connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				fmt.Println(err.Error())
+			}
+		}
+
+		fmt.Fprintf(w, string(body))
+
+	default:
+
+		fmt.Fprintf(w, r.Method+" - This method is not implemented")
 
 	}
 
@@ -352,7 +389,8 @@ func Postform_add_change_customer(w http.ResponseWriter, r *http.Request) {
 
 func Api_xml(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "GET" {
+	switch r.Method {
+	case "GET":
 
 		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
 
@@ -388,7 +426,7 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Fprintf(w, XMLString)
 
-	} else {
+	case "POST":
 
 		// test_rez_slice := []CustomerStruct_xml{}
 		// //var test_rez []Customer_struct
@@ -465,6 +503,65 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Fprintf(w, string(body))
 
+	case "DELETE":
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		doc := etree.NewDocument()
+		if err := doc.ReadFromBytes(body); err != nil {
+			panic(err)
+		}
+
+		var customer_map_xml = make(map[string]rootsctuct.Customer_struct)
+
+		Custromers := doc.SelectElement("Custromers")
+
+		for _, Custromer := range Custromers.SelectElements("Custromer") {
+
+			Customer_struct := rootsctuct.Customer_struct{}
+			//fmt.Println("CHILD element:", Custromer.Tag)
+			if Customer_id := Custromer.SelectElement("Customer_id"); Customer_id != nil {
+				value := Customer_id.SelectAttrValue("value", "unknown")
+				Customer_struct.Customer_id = value
+			}
+			if Customer_name := Custromer.SelectElement("Customer_name"); Customer_name != nil {
+				value := Customer_name.SelectAttrValue("value", "unknown")
+				Customer_struct.Customer_name = value
+			}
+			if Customer_type := Custromer.SelectElement("Customer_type"); Customer_type != nil {
+				value := Customer_type.SelectAttrValue("value", "unknown")
+				Customer_struct.Customer_type = value
+			}
+
+			if Customer_email := Custromer.SelectElement("Customer_email"); Customer_email != nil {
+				value := Customer_email.SelectAttrValue("value", "unknown")
+				Customer_struct.Customer_email = value
+			}
+
+			customer_map_xml[Customer_struct.Customer_id] = Customer_struct
+			// for _, attr := range Custromer.Attr {
+			// 	fmt.Printf("  ATTR: %s=%s\n", attr.Key, attr.Value)
+			// }
+		}
+
+		for _, p := range customer_map_xml {
+			err := connector.ConnectorV.DeleteOneRow(connector.ConnectorV.DataBaseType, p.Customer_id, rootsctuct.Global_settingsV)
+			if err != nil {
+				connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				fmt.Println(err.Error())
+			}
+		}
+
+		fmt.Fprintf(w, string(body))
+
+	default:
+
+		fmt.Fprintf(w, r.Method+" - This method is not implemented")
+
 	}
 }
 
@@ -481,6 +578,7 @@ func StratHandlers() {
 	router.HandleFunc("/api_xml", Api_xml)
 
 	router.HandleFunc("/list_customer", List_customer)
+
 	router.HandleFunc("/edit/{id:[0-9]+}", EditPage).Methods("GET")
 	router.HandleFunc("/edit/{id:[0-9]+}", EditHandler).Methods("POST")
 	router.HandleFunc("/delete/{id:[0-9]+}", DeleteHandler)

@@ -34,6 +34,7 @@ type Global_settings struct {
 	ElasticSearchAdress9200 string
 	ElasticSearchAdress9300 string
 	ElasticSearchIndexName  string
+	Enterprise1CAdress      string
 }
 
 func (GlobalSettings *Global_settings) SaveSettingsOnDisk() {

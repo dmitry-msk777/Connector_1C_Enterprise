@@ -67,6 +67,15 @@
 			</div>
 
 			<div>
+				<label>Enterprise1CAdress</label>
+				{{if .Enterprise1CAdress}}
+				<input type="text" class="form-control" id="Enterprise1CAdress" name="Enterprise1CAdress" value="{{.Enterprise1CAdress}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="Enterprise1CAdress" name="Enterprise1CAdress"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
 				<label>DataBaseType</label>
 				<select id="DataBaseType" name="DataBaseType" class="form-control">
 					{{if .DataBaseType}}
@@ -77,6 +86,7 @@
 					<option value="MongoDB">MongoDB</option>
 					<option value="Redis">Redis</option>
 					<option value="DemoRegime">DemoRegime</option>
+					<option value="1C_Enterprise">1C_Enterprise</option>
 				  </select>
 
 			</div>
