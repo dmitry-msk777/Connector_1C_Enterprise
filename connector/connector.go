@@ -61,7 +61,7 @@ func (Connector *Connector) InitDataBase() error {
 
 	if Connector.Global_settings.UseRabbitMQ {
 		Connector.InitRabbitMQ()
-		go Connector.ConsumeFromQueueFor1C()
+		Connector.ConsumeFromQueueFor1C()
 	}
 
 	switch Connector.DataBaseType {
@@ -121,7 +121,7 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 		//return nil, err
 	}
 
-	var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+	// var customer_map_json = make(map[string]rootsctuct.Customer_struct)
 
 	q, err := Connector.RabbitMQ_channel.QueueDeclare(
 		"Customer___add_change", // name
@@ -154,39 +154,26 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 		//return nil, err
 	}
 
-	// forever := make(chan bool)
-
 	go func() {
 		for d := range msgs {
 
-			Customer_struct := rootsctuct.Customer_struct{}
-
-			err = json.Unmarshal(d.Body, &Customer_struct)
-			if err != nil {
-				Connector.LoggerConn.ErrorLogger.Println(err.Error())
-			}
-
-			customer_map_json[Customer_struct.Customer_id] = Customer_struct
-
-			bytesRepresentation, err := json.Marshal(Customer_struct)
+			//ConnectorV.Global_settings.Enterprise1CAdress
+			resp, err := http.Post("http://localhost/REST_test/hs/rabbitmq/rabbitmq_json", "application/json", bytes.NewBuffer(d.Body))
 			if err != nil {
 				//return err
 				Connector.LoggerConn.ErrorLogger.Println(err.Error())
 			}
 
-			resp, err := http.Post("http://localhost/REST_test/hs/rabbitmq/rabbitmq_json", "application/json", bytes.NewBuffer(bytesRepresentation))
-			if err != nil {
-				//return err
-				Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			defer resp.Body.Close()
+			body_response, _ := ioutil.ReadAll(resp.Body)
+			if string(body_response) != "Good777" {
+				Connector.LoggerConn.ErrorLogger.Println("Error receiving message")
 			}
-
-			body2, _ := ioutil.ReadAll(resp.Body)
-			println(string(body2))
 		}
-	}()
 
-	// log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	// <-forever
+		defer Connector.RabbitMQ_channel.Close()
+
+	}()
 
 }
 
@@ -713,7 +700,7 @@ func (Connector *Connector) GetAllCustomer(DataBaseType string) (map[string]root
 		return customer_map_s, nil
 
 	case "1C_Enterprise":
-		//resp, err := http.Get("http://localhost/REST_test/hs/exchange/custom_json")
+		//Connector.Global_settings.Enterprise1CAdress
 		resp, err := http.Get("http://localhost/REST_test/hs/exchange/custom_json")
 		if err != nil {
 			Connector.LoggerConn.ErrorLogger.Println(err.Error())
@@ -795,19 +782,18 @@ func (Connector *Connector) AddChangeOneRow(DataBaseType string, Customer_struct
 		if err != nil {
 			return err
 		}
-
+		//Connector.Global_settings.Enterprise1CAdress
 		resp, err := http.Post("http://localhost/REST_test/hs/exchange/custom_json", "application/json", bytes.NewBuffer(bytesRepresentation))
 		if err != nil {
 			return err
 		}
 
-		// var result map[string]interface{}
-		// json.NewDecoder(resp.Body).Decode(&result)
-		// fmt.Println(result)
-		// fmt.Println(result["data"])
+		defer resp.Body.Close()
 
-		body2, _ := ioutil.ReadAll(resp.Body)
-		println(string(body2))
+		body_response, _ := ioutil.ReadAll(resp.Body)
+		if string(body_response) != "Good777" {
+			Connector.LoggerConn.ErrorLogger.Println("Error receiving message")
+		}
 
 	default:
 		Connector.DemoDBmap[Customer_struct.Customer_id] = Customer_struct
@@ -888,6 +874,7 @@ func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_se
 
 		client := &http.Client{}
 
+		//Connector.Global_settings.Enterprise1CAdress
 		req, err := http.NewRequest("GET", "http://localhost/REST_test/hs/exchange/custom_json", nil)
 		if err != nil {
 			Connector.LoggerConn.ErrorLogger.Println(err.Error())
@@ -966,6 +953,7 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 
 		client := &http.Client{}
 
+		//Connector.Global_settings.Enterprise1CAdress
 		req, err := http.NewRequest("DELETE", "http://localhost/REST_test/hs/exchange/custom_json", nil)
 		if err != nil {
 			Connector.LoggerConn.ErrorLogger.Println(err.Error())
@@ -986,10 +974,10 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 		}
 
 		defer resp.Body.Close()
-		resp_body, _ := ioutil.ReadAll(resp.Body)
-
-		fmt.Println(resp.Status)
-		fmt.Println(string(resp_body))
+		body_response, _ := ioutil.ReadAll(resp.Body)
+		if string(body_response) != "Good777" {
+			Connector.LoggerConn.ErrorLogger.Println("Error receiving message")
+		}
 
 		return nil
 

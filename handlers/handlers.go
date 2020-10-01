@@ -565,6 +565,59 @@ func Api_xml(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func Test_odata_1c(w http.ResponseWriter, r *http.Request) {
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", "http://localhost/REST_test/odata/standard.odata/Catalog_Клиенты?$format=json", nil)
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	//q := req.URL.Query()
+	//q.Add("id", "id")
+	//req.URL.RawQuery = q.Encode()
+
+	fmt.Println(req.URL.String())
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	defer resp.Body.Close()
+	resp_body, _ := ioutil.ReadAll(resp.Body)
+
+	// fmt.Println(resp.Status)
+	// fmt.Println(string(resp_body))
+
+	var unknow_raw_json interface{}
+
+	if err := json.Unmarshal(resp_body, &unknow_raw_json); err != nil {
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+
+	data1, _ := unknow_raw_json.(map[string]interface{})
+	data1map := data1["value"]
+	datadescription := data1["odata.metadata"]
+
+	data2, _ := data1map.([]interface{})
+
+	fmt.Println("odata.metadata : ", datadescription)
+	for key, value := range data2 {
+		//fmt.Println("Key:", key, "Value:", value)
+		fmt.Println("----------------------Key:", key)
+		valuemap := value.(map[string]interface{})
+		for key2, value2 := range valuemap {
+			fmt.Println("Key:", key2, "Value:", value2)
+		}
+	}
+
+	fmt.Fprintf(w, string(resp_body))
+}
+
 func StratHandlers() {
 
 	router := mux.NewRouter()
@@ -576,6 +629,8 @@ func StratHandlers() {
 	router.HandleFunc("/log1C_xml", log1C_xml)
 	router.HandleFunc("/api_json", Api_json)
 	router.HandleFunc("/api_xml", Api_xml)
+
+	router.HandleFunc("/test_odata_1c", Test_odata_1c)
 
 	router.HandleFunc("/list_customer", List_customer)
 
