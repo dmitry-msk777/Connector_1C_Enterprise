@@ -442,7 +442,328 @@ func (Connector *Connector) ParseXMLFrom1C(body []byte) ([]rootsctuct.Log1C, err
 	return Log1C_slice, nil
 }
 
-func (Connector *Connector) SendInElastichSearch(Log1C_slice []rootsctuct.Log1C) error {
+func (Connector *Connector) SendInElastichSearchNew(Log1C_slice []rootsctuct.Event1C) error {
+
+	// clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+	// 	elastic.SetURL("http://127.0.0.1:9200", "http://127.0.0.1:9300"))
+	//// elastic.SetBasicAuth("user", "secret"))
+
+	clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+		elastic.SetURL(Connector.Global_settings.ElasticSearchAdress9200, Connector.Global_settings.ElasticSearchAdress9300))
+
+	if err != nil {
+		return err
+	}
+
+	// index example "transactionid"
+	exists, err := clientElasticSerch.IndexExists(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// Create a new index.
+		mapping := `
+				{
+					"settings":{
+						"number_of_shards":1,
+						"number_of_replicas":0
+					},
+					"mappings":{
+						"doc":{
+							"properties":{
+								"Level":{
+									"type":"text"
+								},
+								"Date":{
+									"type":"text"
+								},
+								"ApplicationName":{
+									"type":"text"
+								},
+								"ApplicationPresentation":{
+									"type":"text"
+								},
+								"Event":{
+									"type":"text"
+								},
+								"EventPresentation":{
+									"type":"text"
+								},
+								"User":{
+									"type":"text"
+								},
+								"UserName":{
+									"type":"text"
+								},
+								"Computer":{
+									"type":"text"
+								},
+								"Metadata":{
+									"type":"text"
+								},
+								"MetadataPresentation":{
+									"type":"text"
+								},
+								"Comment":{
+									"type":"text"
+								},
+								"Data":{
+									"type":"text"
+								},
+								"DataPresentation":{
+									"type":"text"
+								},
+								"TransactionStatus":{
+									"type":"text"
+								},
+								"TransactionID":{
+									"type":"text",
+									"store": true,
+									"fielddata": true
+								},
+								"Connection":{
+									"type":"text"
+								},
+								"Session":{
+									"type":"text"
+								},
+								"ServerName":{
+									"type":"text"
+								},
+								"Port":{
+									"type":"text"
+								},
+								"SyncPort":{
+									"type":"text"
+								}
+						}
+					}
+				}
+				}`
+
+		//createIndex, err := clientElasticSerch.CreateIndex("TransactionID").Body(mapping).IncludeTypeName(true).Do(context.Background())
+		createIndex, err := clientElasticSerch.CreateIndex(Connector.Global_settings.ElasticSearchIndexName).Body(mapping).Do(context.Background())
+		if err != nil {
+			return err
+		}
+		if !createIndex.Acknowledged {
+		}
+	}
+
+	for _, p := range Log1C_slice {
+
+		// put1, err := clientElasticSerch.Index().
+		// 	Index("transactionid").
+		// 	Type("doc").
+		// 	Id(p.TransactionID).
+		// 	BodyJson(p).
+		// 	Do(context.Background())
+
+		// if err != nil {
+		// 	Connector.LoggerConn.ErrorLogger.Println(err.Error())
+		// 	//fmt.Fprintf(w, err.Error())
+		// 	return err
+		// }
+		// fmt.Printf("Indexed record %s to index %s, type %s\n", put1.Id, put1.Index, put1.Type)
+
+		_, err := clientElasticSerch.Index().
+			Index("transactionid").
+			Type("doc").
+			Id(p.TransactionID).
+			BodyJson(p).
+			Do(context.Background())
+
+		if err != nil {
+			Connector.LoggerConn.ErrorLogger.Println(err.Error())
+			//fmt.Fprintf(w, err.Error())
+			return err
+		}
+		//fmt.Printf("Indexed record %s to index %s, type %s\n", put1.Id, put1.Index, put1.Type)
+
+	}
+
+	// Flush to make sure the documents got written.
+	_, err = clientElasticSerch.Flush().Index(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	// // +++ Search with a term query
+	// termQuery := elastic.NewTermQuery("TransactionID", "11.09.2020 15:12:07 (1446734)")
+	// searchResult, err := clientElasticSerch.Search().
+	// 	Index("transactionid").      // search in index "crm_customer"
+	// 	Query(termQuery).            // specify the query
+	// 	Sort("TransactionID", true). // sort by "user" field, ascending
+	// 	From(0).Size(10).            // take documents 0-9
+	// 	Pretty(true).                // pretty print request and response JSON
+	// 	Do(context.Background())     // execute
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // +++ searchResult is of type SearchResult and returns hits, suggestions,
+	// // and all kinds of other information from Elasticsearch.
+	// fmt.Printf("Query took %d milliseconds\n", searchResult.TookInMillis)
+
+	// var ttyp rootsctuct.Log1C
+	// for _, item := range searchResult.Each(reflect.TypeOf(ttyp)) {
+	// 	t := item.(rootsctuct.Log1C)
+	// 	//fmt.Fprintf(w, "customer_id: %s customer_name: %s", t.TransactionID, t.TransactionID)
+	// 	fmt.Printf("TransactionID: %s", t.TransactionID)
+	// }
+	// fmt.Printf("Found a total of %d records\n", searchResult.TotalHits())
+
+	// // // +++ Delete an index.
+	// // deleteIndex, err := clientElasticSerch.DeleteIndex("transactionid").Do(context.Background())
+	// // if err != nil {
+	// // 	return err
+	// // }
+	// // if !deleteIndex.Acknowledged {
+	// // 	// Not acknowledged
+	// // }
+
+	return nil
+
+}
+
+func (Connector *Connector) SendInElastichBulk(Log1C_slice []rootsctuct.Event1C) error {
+
+	// clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+	// 	elastic.SetURL("http://127.0.0.1:9200", "http://127.0.0.1:9300"))
+	//// elastic.SetBasicAuth("user", "secret"))
+
+	clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+		elastic.SetURL(Connector.Global_settings.ElasticSearchAdress9200, Connector.Global_settings.ElasticSearchAdress9300))
+
+	if err != nil {
+		return err
+	}
+
+	// index example "transactionid"
+	exists, err := clientElasticSerch.IndexExists(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// Create a new index.
+		mapping := `
+				{
+					"settings":{
+						"number_of_shards":1,
+						"number_of_replicas":0
+					},
+					"mappings":{
+						"doc":{
+							"properties":{
+								"Level":{
+									"type":"text"
+								},
+								"Date":{
+									"type":"text"
+								},
+								"ApplicationName":{
+									"type":"text"
+								},
+								"ApplicationPresentation":{
+									"type":"text"
+								},
+								"Event":{
+									"type":"text"
+								},
+								"EventPresentation":{
+									"type":"text"
+								},
+								"User":{
+									"type":"text"
+								},
+								"UserName":{
+									"type":"text"
+								},
+								"Computer":{
+									"type":"text"
+								},
+								"Metadata":{
+									"type":"text"
+								},
+								"MetadataPresentation":{
+									"type":"text"
+								},
+								"Comment":{
+									"type":"text"
+								},
+								"Data":{
+									"type":"text"
+								},
+								"DataPresentation":{
+									"type":"text"
+								},
+								"TransactionStatus":{
+									"type":"text"
+								},
+								"TransactionID":{
+									"type":"text",
+									"store": true,
+									"fielddata": true
+								},
+								"Connection":{
+									"type":"text"
+								},
+								"Session":{
+									"type":"text"
+								},
+								"ServerName":{
+									"type":"text"
+								},
+								"Port":{
+									"type":"text"
+								},
+								"SyncPort":{
+									"type":"text"
+								}
+						}
+					}
+				}
+				}`
+
+		//createIndex, err := clientElasticSerch.CreateIndex("TransactionID").Body(mapping).IncludeTypeName(true).Do(context.Background())
+		createIndex, err := clientElasticSerch.CreateIndex(Connector.Global_settings.ElasticSearchIndexName).Body(mapping).Do(context.Background())
+		if err != nil {
+			return err
+		}
+		if !createIndex.Acknowledged {
+		}
+	}
+
+	bulk := clientElasticSerch.Bulk().Index("transactionid").Type("doc")
+	ctx := context.TODO()
+
+	for _, p := range Log1C_slice {
+		bulk.Add(elastic.NewBulkIndexRequest().Id(p.TransactionID).Doc(p))
+
+		if bulk.NumberOfActions() >= 10000 {
+			// Commit
+			_, err = bulk.Do(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if bulk.NumberOfActions() != 0 {
+		_, err = bulk.Do(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+func (Connector *Connector) SendInElastichSearchOld(Log1C_slice []rootsctuct.Log1C) error {
 
 	// clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
 	// 	elastic.SetURL("http://127.0.0.1:9200", "http://127.0.0.1:9300"))

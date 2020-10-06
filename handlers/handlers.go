@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 
 	connector "github.com/dmitry-msk777/Connector_1C_Enterprise/connector"
 	rootsctuct "github.com/dmitry-msk777/Connector_1C_Enterprise/rootdescription"
 
+	"encoding/binary"
 	"encoding/json"
+	"encoding/xml"
 	"io/ioutil"
 
 	"github.com/beevik/etree"
@@ -161,24 +164,57 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 
+		start := time.Now()
+
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
 		}
 
-		Log1C_slice, err := connector.ConnectorV.ParseXMLFrom1C(body)
+		fmt.Println("Size byte : ", binary.Size(body))
+
+		// Возникают проблемы при загрузке файла размеров в 1 GB это 100 000 записей журнала
+		// Log1C_slice, err := connector.ConnectorV.ParseXMLFrom1C(body)
+		// if err != nil {
+		// 	connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+		// 	fmt.Fprintf(w, err.Error())
+		// }
+
+		// fmt.Printf("len=%d cap=%d %v\n", len(Log1C_slice), cap(Log1C_slice))
+
+		// Можно разпознать XML по сайту и получить похожую структуру слайзов в EventLog1C.Event
+		// Сайт генерации структуры по файлу https://www.onlinetool.io/xmltogo/
+		var EventLog1C rootsctuct.EventLog1C
+
+		err = xml.Unmarshal(body, &EventLog1C)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		// for _, Event := range EventLog1C.Event {
+		// 	fmt.Println(Event)
+		// }
+
+		fmt.Printf("len=%d cap=%d %v\n", len(EventLog1C.Event), cap(EventLog1C.Event))
+
+		duration := time.Since(start)
+		fmt.Println(duration)
+
+		// err = connector.ConnectorV.SendInElastichSearchOld(Log1C_slice)
+		//err = connector.ConnectorV.SendInElastichSearchNew(EventLog1C.Event)
+
+		err = connector.ConnectorV.SendInElastichBulk(EventLog1C.Event)
+
 		if err != nil {
 			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 			fmt.Fprintf(w, err.Error())
+			return
 		}
 
-		err = connector.ConnectorV.SendInElastichSearch(Log1C_slice)
-
-		if err != nil {
-			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
-			fmt.Fprintf(w, err.Error())
-		}
+		duration2 := time.Since(start)
+		fmt.Println(duration2)
 
 		fmt.Fprintf(w, "Succeed!")
 
@@ -592,6 +628,7 @@ func Test_odata_1c(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println(resp.Status)
 	// fmt.Println(string(resp_body))
 
+	// Тут парсим неопределенный JSON
 	var unknow_raw_json interface{}
 
 	if err := json.Unmarshal(resp_body, &unknow_raw_json); err != nil {
@@ -615,7 +652,41 @@ func Test_odata_1c(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Можно переложить результат в какую-нибудь структуру пример ниже
+
+	// example of type definition
+	// switch vv := v.(type) {
+	// case string:
+	//     fmt.Printf("%s => (string) %q\n", kn, vv)
+	// case bool:
+	//     fmt.Printf("%s => (bool) %v\n", kn, vv)
+	// case float64:
+	//     fmt.Printf("%s => (float64) %f\n", kn, vv)
+	// case map[string]interface{}:
+	//     fmt.Printf("%s => (map[string]interface{}) ...\n", kn)
+	//     iterMap(vv, kn)
+	// case []interface{}:
+	//     fmt.Printf("%s => ([]interface{}) ...\n", kn)
+	//     iterSlice(vv, kn)
+	// default:
+	//     fmt.Printf("%s => (unknown?) ...\n", kn)
+	// }
+
+	// Тут идет преобразования с определенной структурой для документа. Выше для неопределенного JSON
+	var Odata1C rootsctuct.Odata1C
+
+	if err := json.Unmarshal(resp_body, &Odata1C); err != nil {
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+
 	fmt.Fprintf(w, string(resp_body))
+
+}
+
+func Test(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Fprintf(w, "test")
 }
 
 func StratHandlers() {
@@ -629,6 +700,8 @@ func StratHandlers() {
 	router.HandleFunc("/log1C_xml", log1C_xml)
 	router.HandleFunc("/api_json", Api_json)
 	router.HandleFunc("/api_xml", Api_xml)
+
+	router.HandleFunc("/test", Test)
 
 	router.HandleFunc("/test_odata_1c", Test_odata_1c)
 

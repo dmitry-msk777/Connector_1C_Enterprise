@@ -2,6 +2,7 @@ package rootdescription
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -35,6 +36,25 @@ type Global_settings struct {
 	ElasticSearchAdress9300 string
 	ElasticSearchIndexName  string
 	Enterprise1CAdress      string
+}
+
+type Odata1C struct {
+	Metadata string       `json:"odata.metadata"`
+	Value    []Odata1Cdoc `json:"value"`
+}
+
+type Odata1Cdoc struct {
+	Ref_Key            string
+	DataVersion        string
+	DeletionMark       bool
+	Code               string
+	Description        string
+	Id                 string `json:"Идентификатор"`
+	Name               string `json:"Имя"`
+	Type               string `json:"Тип"`
+	Email              string `json:"Майл"`
+	Predefined         bool
+	PredefinedDataName string
 }
 
 func (GlobalSettings *Global_settings) SaveSettingsOnDisk() {
@@ -134,4 +154,83 @@ type Log1C struct {
 	ServerName              string
 	Port                    string
 	SyncPort                string
+}
+
+// Генератор структуры для XML https://www.onlinetool.io/xmltogo/
+// type EventLog1C struct {
+// 	XMLName xml.Name `xml:"EventLog"`
+// 	Text    string   `xml:",chardata"`
+// 	V8e     string   `xml:"v8e,attr"`
+// 	Xs      string   `xml:"xs,attr"`
+// 	Xsi     string   `xml:"xsi,attr"`
+// 	Event   []struct {
+// 		Text                    string `xml:",chardata"`
+// 		Level                   string `xml:"Level"`
+// 		Date                    string `xml:"Date"`
+// 		ApplicationName         string `xml:"ApplicationName"`
+// 		ApplicationPresentation string `xml:"ApplicationPresentation"`
+// 		Event                   string `xml:"Event"`
+// 		EventPresentation       string `xml:"EventPresentation"`
+// 		User                    string `xml:"User"`
+// 		UserName                string `xml:"UserName"`
+// 		Computer                string `xml:"Computer"`
+// 		Metadata                string `xml:"Metadata"`
+// 		MetadataPresentation    string `xml:"MetadataPresentation"`
+// 		Comment                 string `xml:"Comment"`
+// 		Data                    struct {
+// 			Text          string `xml:",chardata"`
+// 			Nil           string `xml:"nil,attr"`
+// 			Name          string `xml:"Name"`
+// 			CurrentOSUser string `xml:"CurrentOSUser"`
+// 		} `xml:"Data"`
+// 		DataPresentation  string `xml:"DataPresentation"`
+// 		TransactionStatus string `xml:"TransactionStatus"`
+// 		TransactionID     string `xml:"TransactionID"`
+// 		Connection        string `xml:"Connection"`
+// 		Session           string `xml:"Session"`
+// 		ServerName        string `xml:"ServerName"`
+// 		Port              string `xml:"Port"`
+// 		SyncPort          string `xml:"SyncPort"`
+// 	} `xml:"Event"`
+// }
+
+// Генератор структуры для XML https://www.onlinetool.io/xmltogo/
+type EventLog1C struct {
+	XMLName xml.Name  `xml:"EventLog"`
+	Text    string    `xml:",chardata"`
+	V8e     string    `xml:"v8e,attr"`
+	Xs      string    `xml:"xs,attr"`
+	Xsi     string    `xml:"xsi,attr"`
+	Event   []Event1C `xml:"Event"`
+}
+
+type Event1C struct {
+	Text                    string `xml:",chardata"`
+	Level                   string `xml:"Level"`
+	Date                    string `xml:"Date"`
+	ApplicationName         string `xml:"ApplicationName"`
+	ApplicationPresentation string `xml:"ApplicationPresentation"`
+	Event                   string `xml:"Event"`
+	EventPresentation       string `xml:"EventPresentation"`
+	User                    string `xml:"User"`
+	UserName                string `xml:"UserName"`
+	Computer                string `xml:"Computer"`
+	Metadata                string `xml:"Metadata"`
+	MetadataPresentation    string `xml:"MetadataPresentation"`
+	Comment                 string `xml:"Comment"`
+	// Data                    struct {
+	// 	Text          string `xml:",chardata"`
+	// 	Nil           string `xml:"nil,attr"`
+	// 	Name          string `xml:"Name"`
+	// 	CurrentOSUser string `xml:"CurrentOSUser"`
+	// } `xml:"Data"`
+	Data              string `xml:"Data"`
+	DataPresentation  string `xml:"DataPresentation"`
+	TransactionStatus string `xml:"TransactionStatus"`
+	TransactionID     string `xml:"TransactionID"`
+	Connection        string `xml:"Connection"`
+	Session           string `xml:"Session"`
+	ServerName        string `xml:"ServerName"`
+	Port              string `xml:"Port"`
+	SyncPort          string `xml:"SyncPort"`
 }
