@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -758,6 +759,176 @@ func (Connector *Connector) SendInElastichBulk(Log1C_slice []rootsctuct.Event1C)
 			return err
 		}
 	}
+
+	return nil
+
+}
+
+func (Connector *Connector) SendInElastichBulkGOroutines(Log1C_slice []rootsctuct.Event1C) error {
+
+	// clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+	// 	elastic.SetURL("http://127.0.0.1:9200", "http://127.0.0.1:9300"))
+	//// elastic.SetBasicAuth("user", "secret"))
+
+	clientElasticSerch, err := elastic.NewClient(elastic.SetSniff(false),
+		elastic.SetURL(Connector.Global_settings.ElasticSearchAdress9200, Connector.Global_settings.ElasticSearchAdress9300))
+
+	if err != nil {
+		return err
+	}
+
+	// index example "transactionid"
+	exists, err := clientElasticSerch.IndexExists(Connector.Global_settings.ElasticSearchIndexName).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// Create a new index.
+		mapping := `
+				{
+					"settings":{
+						"number_of_shards":1,
+						"number_of_replicas":0
+					},
+					"mappings":{
+						"doc":{
+							"properties":{
+								"Level":{
+									"type":"text"
+								},
+								"Date":{
+									"type":"text"
+								},
+								"ApplicationName":{
+									"type":"text"
+								},
+								"ApplicationPresentation":{
+									"type":"text"
+								},
+								"Event":{
+									"type":"text"
+								},
+								"EventPresentation":{
+									"type":"text"
+								},
+								"User":{
+									"type":"text"
+								},
+								"UserName":{
+									"type":"text"
+								},
+								"Computer":{
+									"type":"text"
+								},
+								"Metadata":{
+									"type":"text"
+								},
+								"MetadataPresentation":{
+									"type":"text"
+								},
+								"Comment":{
+									"type":"text"
+								},
+								"Data":{
+									"type":"text"
+								},
+								"DataPresentation":{
+									"type":"text"
+								},
+								"TransactionStatus":{
+									"type":"text"
+								},
+								"TransactionID":{
+									"type":"text",
+									"store": true,
+									"fielddata": true
+								},
+								"Connection":{
+									"type":"text"
+								},
+								"Session":{
+									"type":"text"
+								},
+								"ServerName":{
+									"type":"text"
+								},
+								"Port":{
+									"type":"text"
+								},
+								"SyncPort":{
+									"type":"text"
+								}
+						}
+					}
+				}
+				}`
+
+		//createIndex, err := clientElasticSerch.CreateIndex("TransactionID").Body(mapping).IncludeTypeName(true).Do(context.Background())
+		createIndex, err := clientElasticSerch.CreateIndex(Connector.Global_settings.ElasticSearchIndexName).Body(mapping).Do(context.Background())
+		if err != nil {
+			return err
+		}
+		if !createIndex.Acknowledged {
+		}
+	}
+
+	// bulk := clientElasticSerch.Bulk().Index("transactionid").Type("doc")
+	// ctx := context.TODO()
+
+	NumCPU := runtime.NumCPU()
+
+	var divided [][]rootsctuct.Event1C
+
+	chunkSize := (len(Log1C_slice) + NumCPU - 1) / NumCPU
+
+	for i := 0; i < len(Log1C_slice); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(Log1C_slice) {
+			end = len(Log1C_slice)
+		}
+
+		divided = append(divided, Log1C_slice[i:end])
+	}
+
+	// fmt.Printf("%#v\n", divided)
+	//var mapForEngineCRM = make(map[string]rootsctuct.Event1C)
+
+	var wg sync.WaitGroup
+	for _, sliceRow := range divided {
+		wg.Add(1)
+		go func(sliceRow []rootsctuct.Event1C) {
+			defer wg.Done()
+
+			bulk := clientElasticSerch.Bulk().Index("transactionid").Type("doc")
+			ctx := context.TODO()
+
+			for _, p := range sliceRow {
+
+				bulk.Add(elastic.NewBulkIndexRequest().Id(p.TransactionID).Doc(p))
+
+				if bulk.NumberOfActions() >= 10000 {
+					// Commit
+					_, err = bulk.Do(ctx)
+					if err != nil {
+						return
+					}
+				}
+
+			}
+
+			if bulk.NumberOfActions() != 0 {
+				_, err = bulk.Do(ctx)
+				if err != nil {
+					return
+				}
+			}
+
+			//fmt.Println("go func:", len(sliceRow))
+		}(sliceRow)
+	}
+	wg.Wait()
 
 	return nil
 

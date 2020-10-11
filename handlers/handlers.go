@@ -1,8 +1,12 @@
 package handlers
 
 import (
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -689,6 +693,140 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "test")
 }
 
+func readZipFile(zf *zip.File) ([]byte, error) {
+	f, err := zf.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ioutil.ReadAll(f)
+}
+
+func log1C_zip(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "GET" {
+
+		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
+
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		JsonString, err := json.Marshal(customer_map_s)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, "error json:"+err.Error())
+		}
+		//fmt.Fprintf(w, string(JsonString))
+
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		json.NewEncoder(gz).Encode(JsonString)
+		gz.Close()
+
+	} else {
+
+		start := time.Now()
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		fmt.Println("Size byte : ", binary.Size(body))
+
+		zipReader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var unzippedFileBytes []byte
+		// Read all the files from zip archive
+		for _, zipFile := range zipReader.File {
+			fmt.Println("Reading file:", zipFile.Name)
+			unzippedFileBytes, err = readZipFile(zipFile)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			_ = unzippedFileBytes // this is unzipped file bytes
+		}
+
+		fmt.Println("Size byte unzip : ", binary.Size(unzippedFileBytes))
+
+		var EventLog1C rootsctuct.EventLog1C
+
+		err = xml.Unmarshal(unzippedFileBytes, &EventLog1C)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		// for _, Event := range EventLog1C.Event {
+		// 	fmt.Println(Event)
+		// }
+
+		fmt.Printf("len=%d cap=%d %v\n", len(EventLog1C.Event), cap(EventLog1C.Event))
+
+		duration := time.Since(start)
+		fmt.Println(duration)
+
+		err = connector.ConnectorV.SendInElastichBulkGOroutines(EventLog1C.Event)
+
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		// NumCPU := runtime.NumCPU()
+
+		// var divided [][]rootsctuct.Event1C
+
+		// chunkSize := (len(EventLog1C.Event) + NumCPU - 1) / NumCPU
+
+		// for i := 0; i < len(EventLog1C.Event); i += chunkSize {
+		// 	end := i + chunkSize
+
+		// 	if end > len(EventLog1C.Event) {
+		// 		end = len(EventLog1C.Event)
+		// 	}
+
+		// 	divided = append(divided, EventLog1C.Event[i:end])
+		// }
+
+		// // fmt.Printf("%#v\n", divided)
+		// var mapForEngineCRM = make(map[string]rootsctuct.Event1C)
+
+		// var wg sync.WaitGroup
+		// for _, sliceRow := range divided {
+		// 	wg.Add(1)
+		// 	go func(sliceRow []rootsctuct.Event1C) {
+		// 		defer wg.Done()
+
+		// 		for _, SliceL := range sliceRow {
+		// 			mapForEngineCRM[SliceL.TransactionID] = SliceL
+		// 		}
+
+		// 		//fmt.Println("go func:", len(sliceRow))
+		// 	}(sliceRow)
+		// }
+		// wg.Wait()
+
+		// fmt.Println(len(mapForEngineCRM))
+
+		duration2 := time.Since(start)
+		fmt.Println(duration2)
+
+		fmt.Fprintf(w, "Succeed!")
+
+	}
+}
+
 func StratHandlers() {
 
 	router := mux.NewRouter()
@@ -698,6 +836,8 @@ func StratHandlers() {
 
 	router.HandleFunc("/rabbitMQ_1C", RabbitMQ_1C)
 	router.HandleFunc("/log1C_xml", log1C_xml)
+	router.HandleFunc("/log1C_zip", log1C_zip)
+
 	router.HandleFunc("/api_json", Api_json)
 	router.HandleFunc("/api_xml", Api_xml)
 
