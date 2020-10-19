@@ -6,8 +6,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -128,6 +131,8 @@ func RabbitMQ_1C(w http.ResponseWriter, r *http.Request) {
 
 func log1C_xml(w http.ResponseWriter, r *http.Request) {
 
+	// Тестировалаось на 6.8.6
+
 	if r.Method == "GET" {
 
 		// Пока по GET ничего не делаем.
@@ -206,9 +211,13 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 		duration := time.Since(start)
 		fmt.Println(duration)
 
+		// Это варинат загрузки по одной записи из библиотеке представляющей XML как DOM
 		// err = connector.ConnectorV.SendInElastichSearchOld(Log1C_slice)
+
+		// Этот вариант запись по одной записи без Bulk
 		//err = connector.ConnectorV.SendInElastichSearchNew(EventLog1C.Event)
 
+		// Тут нет многопоточности при записи, но она есть в хэндлере с сжатием
 		err = connector.ConnectorV.SendInElastichBulk(EventLog1C.Event)
 
 		if err != nil {
@@ -690,6 +699,56 @@ func Test_odata_1c(w http.ResponseWriter, r *http.Request) {
 
 func Test(w http.ResponseWriter, r *http.Request) {
 
+	switch r.Method {
+	case "GET":
+
+		customer_map_s, err := connector.ConnectorV.GetAllCustomer(connector.ConnectorV.DataBaseType)
+
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		JsonString, err := json.Marshal(customer_map_s)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, "error json:"+err.Error())
+		}
+		fmt.Fprintf(w, string(JsonString))
+
+	case "POST", "PUT":
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		var customer_map_json = make(map[string]rootsctuct.Customer_struct)
+
+		err = json.Unmarshal(body, &customer_map_json)
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+		}
+
+		// for _, p := range customer_map_json {
+		// 	err := connector.ConnectorV.AddChangeOneRow(connector.ConnectorV.DataBaseType, p, rootsctuct.Global_settingsV)
+		// 	if err != nil {
+		// 		connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+		// 		fmt.Println(err.Error())
+		// 	}
+		// }
+
+		fmt.Fprintf(w, string(body))
+
+	default:
+
+		fmt.Fprintf(w, r.Method+" - This method is not implemented")
+
+	}
+
 	fmt.Fprintf(w, "test")
 }
 
@@ -702,7 +761,131 @@ func readZipFile(zf *zip.File) ([]byte, error) {
 	return ioutil.ReadAll(f)
 }
 
+func ParseXMLThroughDecored(ByteData []byte) ([]rootsctuct.Event1C, error) {
+
+	input := bytes.NewReader(ByteData)
+	decoder := xml.NewDecoder(input)
+
+	Events := make([]rootsctuct.Event1C, 0)
+	var Event1C rootsctuct.Event1C
+
+	for {
+
+		tok, tokenErr := decoder.Token()
+
+		if tokenErr != nil && tokenErr != io.EOF {
+			break
+		} else if tokenErr == io.EOF {
+			break
+		}
+
+		if tok == nil {
+			//break
+		}
+
+		switch tok := tok.(type) {
+		case xml.StartElement:
+			if tok.Name.Local == "Event" {
+				if err := decoder.DecodeElement(&Event1C, &tok); err != nil {
+
+				}
+				Events = append(Events, Event1C)
+			}
+
+		case xml.CharData:
+			//data := strings.TrimSpace(string(tok))
+			fmt.Println(tok)
+		case xml.EndElement:
+			fmt.Println(tok.Name.Local)
+		}
+
+	}
+
+	return Events, nil
+
+}
+
+func ConverXMLLog1C(Event1CExtended []rootsctuct.Event1CExtended) ([]rootsctuct.Event1C, error) {
+
+	NumCPU := runtime.NumCPU()
+	// runtime.GOMAXPROCS(NumCPU)
+
+	var divided [][]rootsctuct.Event1CExtended
+
+	chunkSize := (len(Event1CExtended) + NumCPU - 1) / NumCPU
+
+	for i := 0; i < len(Event1CExtended); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(Event1CExtended) {
+			end = len(Event1CExtended)
+		}
+
+		divided = append(divided, Event1CExtended[i:end])
+	}
+
+	var Events []rootsctuct.Event1C
+	mu := &sync.Mutex{}
+
+	var wg sync.WaitGroup
+	for _, sliceRow := range divided {
+		wg.Add(1)
+		go func(sliceRow []rootsctuct.Event1CExtended, mu *sync.Mutex) error {
+			defer wg.Done()
+
+			for _, Slice1 := range sliceRow {
+
+				var Event rootsctuct.Event1C
+
+				Event.Text = Slice1.Text
+				Event.Level = Slice1.Level
+				Event.Date = Slice1.Date
+				Event.ApplicationName = Slice1.ApplicationName
+				Event.ApplicationPresentation = Slice1.ApplicationPresentation
+				Event.Event = Slice1.Event
+				Event.EventPresentation = Slice1.EventPresentation
+				Event.User = Slice1.User
+				Event.UserName = Slice1.UserName
+				Event.Computer = Slice1.Computer
+				Event.Metadata = Slice1.Metadata
+				Event.MetadataPresentation = Slice1.MetadataPresentation
+				Event.Comment = Slice1.Comment
+
+				Event.DataPresentation = Slice1.DataPresentation
+				Event.TransactionStatus = Slice1.TransactionStatus
+				Event.TransactionID = Slice1.TransactionID
+				Event.Connection = Slice1.Connection
+				Event.Session = Slice1.Session
+				Event.ServerName = Slice1.ServerName
+				Event.Port = Slice1.Port
+				Event.SyncPort = Slice1.SyncPort
+
+				var Event1CExtendedData rootsctuct.Event1CExtendedData
+
+				bytejsone, err := json.Marshal(&Event1CExtendedData)
+				if err != nil {
+					return err
+				}
+
+				Event.Data = string(bytejsone)
+
+				mu.Lock()
+				Events = append(Events, Event)
+				mu.Unlock()
+
+			}
+
+			return nil
+		}(sliceRow, mu)
+	}
+	wg.Wait()
+
+	return Events, nil
+}
+
 func log1C_zip(w http.ResponseWriter, r *http.Request) {
+
+	// Тестировалаось на 6.8.6
 
 	if r.Method == "GET" {
 
@@ -758,6 +941,15 @@ func log1C_zip(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Println("Size byte unzip : ", binary.Size(unzippedFileBytes))
 
+		// Этот блок парсинг через декодер, который дольше получается чем стандартный xml.Unmarshal(
+		// Event, err := ParseXMLThroughDecored(unzippedFileBytes)
+		// if err != nil {
+		// 	connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+		// 	fmt.Fprintf(w, err.Error())
+		// 	return
+		// }
+		// fmt.Printf("len=%d cap=%d %v\n", len(Event), cap(Event))
+
 		var EventLog1C rootsctuct.EventLog1C
 
 		err = xml.Unmarshal(unzippedFileBytes, &EventLog1C)
@@ -766,11 +958,17 @@ func log1C_zip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// for _, Event := range EventLog1C.Event {
-		// 	fmt.Println(Event)
-		// }
-
 		fmt.Printf("len=%d cap=%d %v\n", len(EventLog1C.Event), cap(EventLog1C.Event))
+
+		// Тут получаем вложенное поле Data в виде структуры в формате JSON
+		// Использовать var EventLog1C rootsctuct.EventLog1CExtended
+		//_, err = ConverXMLLog1C(EventLog1C.Event)
+
+		if err != nil {
+			connector.ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+			fmt.Fprintf(w, err.Error())
+			return
+		}
 
 		duration := time.Since(start)
 		fmt.Println(duration)
@@ -782,42 +980,6 @@ func log1C_zip(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, err.Error())
 			return
 		}
-
-		// NumCPU := runtime.NumCPU()
-
-		// var divided [][]rootsctuct.Event1C
-
-		// chunkSize := (len(EventLog1C.Event) + NumCPU - 1) / NumCPU
-
-		// for i := 0; i < len(EventLog1C.Event); i += chunkSize {
-		// 	end := i + chunkSize
-
-		// 	if end > len(EventLog1C.Event) {
-		// 		end = len(EventLog1C.Event)
-		// 	}
-
-		// 	divided = append(divided, EventLog1C.Event[i:end])
-		// }
-
-		// // fmt.Printf("%#v\n", divided)
-		// var mapForEngineCRM = make(map[string]rootsctuct.Event1C)
-
-		// var wg sync.WaitGroup
-		// for _, sliceRow := range divided {
-		// 	wg.Add(1)
-		// 	go func(sliceRow []rootsctuct.Event1C) {
-		// 		defer wg.Done()
-
-		// 		for _, SliceL := range sliceRow {
-		// 			mapForEngineCRM[SliceL.TransactionID] = SliceL
-		// 		}
-
-		// 		//fmt.Println("go func:", len(sliceRow))
-		// 	}(sliceRow)
-		// }
-		// wg.Wait()
-
-		// fmt.Println(len(mapForEngineCRM))
 
 		duration2 := time.Since(start)
 		fmt.Println(duration2)

@@ -227,8 +227,10 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 	// 3. Так же я вынужден разрывать соединение, чтобы при завершении на строне RabbitMQ
 	// не отставалось потребителя, возможно это можно сделать какой-то функцией, убить потребитель
 	// после завершения, а не убивать все соединение.
+	// 4. Чтение можно проивзвести как с помощью WaitGroup так и с помощью // break LOOP:
 
 	go func() {
+		// LOOP:
 		for {
 			time.Sleep(1000 * time.Millisecond)
 			select {
@@ -244,7 +246,7 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 				customer_map_json[Customer_struct.Customer_id] = Customer_struct
 
 			default:
-
+				// break LOOP
 				wg.Done()
 				return
 			}
@@ -877,6 +879,7 @@ func (Connector *Connector) SendInElastichBulkGOroutines(Log1C_slice []rootsctuc
 	// ctx := context.TODO()
 
 	NumCPU := runtime.NumCPU()
+	// runtime.GOMAXPROCS(NumCPU)
 
 	var divided [][]rootsctuct.Event1C
 
@@ -891,9 +894,6 @@ func (Connector *Connector) SendInElastichBulkGOroutines(Log1C_slice []rootsctuc
 
 		divided = append(divided, Log1C_slice[i:end])
 	}
-
-	// fmt.Printf("%#v\n", divided)
-	//var mapForEngineCRM = make(map[string]rootsctuct.Event1C)
 
 	var wg sync.WaitGroup
 	for _, sliceRow := range divided {
@@ -919,6 +919,7 @@ func (Connector *Connector) SendInElastichBulkGOroutines(Log1C_slice []rootsctuc
 			}
 
 			if bulk.NumberOfActions() != 0 {
+				//fmt.Println("bulk.NumberOfActions():", bulk.NumberOfActions())
 				_, err = bulk.Do(ctx)
 				if err != nil {
 					return

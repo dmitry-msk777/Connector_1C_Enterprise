@@ -234,3 +234,44 @@ type Event1C struct {
 	Port              string `xml:"Port"`
 	SyncPort          string `xml:"SyncPort"`
 }
+
+type Event1CExtended struct {
+	Text                    string              `xml:",chardata"`
+	Level                   string              `xml:"Level"`
+	Date                    string              `xml:"Date"`
+	ApplicationName         string              `xml:"ApplicationName"`
+	ApplicationPresentation string              `xml:"ApplicationPresentation"`
+	Event                   string              `xml:"Event"`
+	EventPresentation       string              `xml:"EventPresentation"`
+	User                    string              `xml:"User"`
+	UserName                string              `xml:"UserName"`
+	Computer                string              `xml:"Computer"`
+	Metadata                string              `xml:"Metadata"`
+	MetadataPresentation    string              `xml:"MetadataPresentation"`
+	Comment                 string              `xml:"Comment"`
+	Data                    Event1CExtendedData `xml:"Data"`
+	DataPresentation        string              `xml:"DataPresentation"`
+	TransactionStatus       string              `xml:"TransactionStatus"`
+	TransactionID           string              `xml:"TransactionID"`
+	Connection              string              `xml:"Connection"`
+	Session                 string              `xml:"Session"`
+	ServerName              string              `xml:"ServerName"`
+	Port                    string              `xml:"Port"`
+	SyncPort                string              `xml:"SyncPort"`
+}
+
+type EventLog1CExtended struct {
+	XMLName xml.Name          `xml:"EventLog"`
+	Text    string            `xml:",chardata"`
+	V8e     string            `xml:"v8e,attr"`
+	Xs      string            `xml:"xs,attr"`
+	Xsi     string            `xml:"xsi,attr"`
+	Event   []Event1CExtended `xml:"Event"`
+}
+
+type Event1CExtendedData struct {
+	Text          string
+	Nil           string
+	Name          string
+	CurrentOSUser string
+}
