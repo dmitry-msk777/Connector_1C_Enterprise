@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"runtime"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"encoding/json"
 
 	"github.com/beevik/etree"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/olivere/elastic"
 
 	"github.com/go-redis/redis/v7"
@@ -30,13 +32,17 @@ import (
 var ConnectorV Connector
 
 type Connector struct {
-	DataBaseType      string
-	RabbitMQ_channel  *amqp.Channel
-	Global_settings   rootsctuct.Global_settings
-	LoggerConn        rootsctuct.LoggerConn
-	CollectionMongoDB *mongo.Collection
-	DemoDBmap         map[string]rootsctuct.Customer_struct
-	RedisClient       *redis.Client
+	DataBaseType          string
+	RabbitMQ_channel      *amqp.Channel
+	Global_settings       rootsctuct.Global_settings
+	LoggerConn            rootsctuct.LoggerConn
+	CollectionMongoDB     *mongo.Collection
+	DemoDBmap             map[string]rootsctuct.Customer_struct
+	RedisClient           *redis.Client
+	TelegramContext       context.Context
+	TelegramCancel        context.CancelFunc
+	TelegramCloseChan     chan struct{}
+	TelegramCloseChanFlag bool
 }
 
 func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settings) error {
@@ -58,7 +64,275 @@ func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settin
 
 }
 
+func (Connector *Connector) StartTelegramWithoutCancel() {
+
+	bot, err := tgbotapi.NewBotAPI(Connector.Global_settings.TelegramAPIKey)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//bot.Debug = true
+
+	//log.Printf("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	updates, err := bot.GetUpdatesChan(u)
+
+	for update := range updates {
+		if update.Message == nil { // ignore any non-Message Updates
+			continue
+		}
+
+		// Текст сообщения
+		Text := update.Message.Text
+
+		switch Text {
+		case "all":
+			customer_map_data, err := ConnectorV.GetAllCustomer(ConnectorV.DataBaseType)
+
+			if err != nil {
+				ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				continue
+			}
+
+			Jsonbyte, err := json.Marshal(customer_map_data)
+			if err != nil {
+				ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				continue
+			}
+
+			JsonString := string(Jsonbyte)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			bot.Send(msg)
+
+		case "test":
+
+			//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			bot.Send(msg)
+
+		default:
+			Customer_struct_out, err := ConnectorV.FindOneRow(ConnectorV.DataBaseType, Text, rootsctuct.Global_settingsV)
+
+			if err != nil {
+				ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				continue
+			}
+
+			Jsonbyte, err := json.Marshal(Customer_struct_out)
+			if err != nil {
+				ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+				continue
+			}
+
+			JsonString := string(Jsonbyte)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			bot.Send(msg)
+		}
+
+	}
+
+}
+
+func (Connector *Connector) StartTelegram(ctx context.Context) {
+
+	bot, err := tgbotapi.NewBotAPI(Connector.Global_settings.TelegramAPIKey)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//bot.Debug = true
+
+	//log.Printf("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	updates, err := bot.GetUpdatesChan(u)
+
+	//LOOP:
+	for {
+		select {
+		case <-ctx.Done():
+			bot.StopReceivingUpdates()
+			//break LOOP
+			return
+		case update := <-updates:
+
+			if update.Message == nil { // ignore any non-Message Updates
+				continue
+			}
+
+			// Текст сообщения
+			Text := update.Message.Text
+
+			switch Text {
+			case "all":
+				customer_map_data, err := ConnectorV.GetAllCustomer(ConnectorV.DataBaseType)
+
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				Jsonbyte, err := json.Marshal(customer_map_data)
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				JsonString := string(Jsonbyte)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+
+			case "test":
+
+				//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+
+			default:
+				Customer_struct_out, err := ConnectorV.FindOneRow(ConnectorV.DataBaseType, Text, rootsctuct.Global_settingsV)
+
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				Jsonbyte, err := json.Marshal(Customer_struct_out)
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				JsonString := string(Jsonbyte)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+			}
+
+		}
+
+	}
+
+}
+
+func (Connector *Connector) StartTelegramChan() {
+
+	bot, err := tgbotapi.NewBotAPI(Connector.Global_settings.TelegramAPIKey)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//bot.Debug = true
+
+	//log.Printf("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	updates, err := bot.GetUpdatesChan(u)
+
+	//LOOP:
+	for {
+		select {
+		case <-Connector.TelegramCloseChan:
+			bot.StopReceivingUpdates()
+			//break LOOP
+			return
+		case update := <-updates:
+
+			if update.Message == nil { // ignore any non-Message Updates
+				continue
+			}
+
+			// Текст сообщения
+			Text := update.Message.Text
+
+			switch Text {
+			case "all":
+				customer_map_data, err := ConnectorV.GetAllCustomer(ConnectorV.DataBaseType)
+
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				Jsonbyte, err := json.Marshal(customer_map_data)
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				JsonString := string(Jsonbyte)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+
+			case "test":
+
+				//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+
+			default:
+				Customer_struct_out, err := ConnectorV.FindOneRow(ConnectorV.DataBaseType, Text, rootsctuct.Global_settingsV)
+
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				Jsonbyte, err := json.Marshal(Customer_struct_out)
+				if err != nil {
+					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
+					continue
+				}
+
+				JsonString := string(Jsonbyte)
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+			}
+
+		}
+
+	}
+
+}
+
 func (Connector *Connector) InitDataBase() error {
+
+	Connector.InitTelegram()
 
 	if Connector.Global_settings.UseRabbitMQ {
 		Connector.InitRabbitMQ()
@@ -302,6 +576,66 @@ func (Connector *Connector) SendInQueue(Customer_struct rootsctuct.Customer_stru
 
 	return nil
 
+}
+
+func (Connector *Connector) InitTelegram() error {
+
+	// Можно использовать сокек если Телеграм заблокирован из пакета "net/proxy"
+	// dialSocksProxy, err := proxy.SOCKS5("tcp", "88.99.149.206:9050", nil, proxy.Direct)
+	// if err != nil {
+	// 	fmt.Println("Error connecting to proxy:", err)
+	// }
+
+	// tr := &http.Transport{Dial: dialSocksProxy.Dial}
+
+	// // Create client
+	// myClient := &http.Client{
+	// 	Transport: tr,
+	// }
+	// bot, err := tgbotapi.NewBotAPIWithClient("808741510:AAECEpVU9cLIdJ0HsHpNASlolDVWYACgyA4", myClient)
+
+	// Процедуры для Telegram подразумевается отключение работаюей в фоне горутины, при снятии флажка
+	// Испльзуются два подхода к завершению через Канал и КОнкекст с отменой
+	// if Connector.Global_settings.UseTelegram {
+
+	// 	if Connector.TelegramCloseChanFlag == false {
+
+	// 		done := make(chan struct{})
+	// 		Connector.TelegramCloseChan = done
+	// 		Connector.TelegramCloseChanFlag = true
+
+	// 		go Connector.StartTelegramChan()
+	// 	}
+
+	// } else {
+	// 	if Connector.TelegramCloseChanFlag == true {
+	// 		Connector.TelegramCloseChanFlag = false
+	// 		Connector.TelegramCloseChan <- struct{}{}
+	// 	}
+	// }
+
+	// Это подход с отменой через контекст
+	if Connector.Global_settings.UseTelegram {
+
+		if Connector.TelegramCancel == nil {
+			ctx, cancel := context.WithCancel(context.Background())
+			Connector.TelegramContext = ctx
+			Connector.TelegramCancel = cancel
+
+			go Connector.StartTelegram(Connector.TelegramContext)
+		}
+
+	} else {
+		if Connector.TelegramCancel != nil {
+			Connector.TelegramCancel()
+			Connector.TelegramCancel = nil
+		}
+	}
+
+	// Это процедура запуска без отмены канала при изменении настроек
+	//go Connector.StartTelegramWithoutCancel()
+
+	return nil
 }
 
 func (Connector *Connector) InitRabbitMQ() error {

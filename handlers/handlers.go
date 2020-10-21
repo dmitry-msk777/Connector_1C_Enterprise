@@ -59,6 +59,14 @@ func Settings(w http.ResponseWriter, r *http.Request) {
 
 		rootsctuct.Global_settingsV.Enterprise1CAdress = r.FormValue("Enterprise1CAdress")
 
+		if r.FormValue("UseTelegram") == "on" {
+			rootsctuct.Global_settingsV.UseTelegram = true
+		} else {
+			rootsctuct.Global_settingsV.UseTelegram = false
+		}
+
+		rootsctuct.Global_settingsV.TelegramAPIKey = r.FormValue("TelegramAPIKey")
+
 		connector.ConnectorV.SetSettings(rootsctuct.Global_settingsV)
 
 		err := connector.ConnectorV.InitDataBase()

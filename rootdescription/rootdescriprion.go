@@ -36,6 +36,8 @@ type Global_settings struct {
 	ElasticSearchAdress9300 string
 	ElasticSearchIndexName  string
 	Enterprise1CAdress      string
+	UseTelegram             bool
+	TelegramAPIKey          string
 }
 
 type Odata1C struct {

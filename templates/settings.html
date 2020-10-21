@@ -76,6 +76,24 @@
 			</div>
 
 			<div>
+				<label>UseTelegram</label>
+				{{if .UseTelegram}}
+				<input type="checkbox" class="form-control" id="UseTelegram" name="UseTelegram" checked /> <br><br>
+				{{else}}
+				<input type="checkbox" class="form-control" id="UseTelegram" name="UseTelegram"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
+				<label>TelegramAPIKey</label>
+				{{if .TelegramAPIKey}}
+				<input type="text" class="form-control" id="TelegramAPIKey" name="TelegramAPIKey" value="{{.TelegramAPIKey}}" /> <br><br>
+				{{else}}
+				<input type="text" class="form-control" id="TelegramAPIKey" name="TelegramAPIKey"  /> <br><br>
+				{{end}}
+			</div>
+
+			<div>
 				<label>DataBaseType</label>
 				<select id="DataBaseType" name="DataBaseType" class="form-control">
 					{{if .DataBaseType}}
