@@ -214,7 +214,7 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 		// 	fmt.Println(Event)
 		// }
 
-		fmt.Printf("len=%d cap=%d %v\n", len(EventLog1C.Event), cap(EventLog1C.Event))
+		fmt.Printf("len=%d cap=%d", len(EventLog1C.Event), cap(EventLog1C.Event))
 
 		duration := time.Since(start)
 		fmt.Println(duration)
@@ -966,7 +966,7 @@ func log1C_zip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Printf("len=%d cap=%d %v\n", len(EventLog1C.Event), cap(EventLog1C.Event))
+		fmt.Printf("len=%d cap=%d", len(EventLog1C.Event), cap(EventLog1C.Event))
 
 		// Тут получаем вложенное поле Data в виде структуры в формате JSON
 		// Использовать var EventLog1C rootsctuct.EventLog1CExtended

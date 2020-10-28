@@ -29,11 +29,13 @@ import (
 	rootsctuct "github.com/dmitry-msk777/Connector_1C_Enterprise/rootdescription"
 )
 
+// ConnectorV центральная переменная (своего рода движек)
 var ConnectorV Connector
 
+// Connector центральная структура (своего рода движек)
 type Connector struct {
 	DataBaseType          string
-	RabbitMQ_channel      *amqp.Channel
+	RabbitMQchannel       *amqp.Channel
 	Global_settings       rootsctuct.Global_settings
 	LoggerConn            rootsctuct.LoggerConn
 	CollectionMongoDB     *mongo.Collection
@@ -43,8 +45,10 @@ type Connector struct {
 	TelegramCancel        context.CancelFunc
 	TelegramCloseChan     chan struct{}
 	TelegramCloseChanFlag bool
+	Mutex                 *sync.Mutex
 }
 
+// SetSettings устанавливает загруженные настроки внутрь Connector
 func (Connector *Connector) SetSettings(Global_settings rootsctuct.Global_settings) error {
 
 	Connector.DataBaseType = Global_settings.DataBaseType
@@ -74,7 +78,7 @@ func (Connector *Connector) StartTelegramWithoutCancel() {
 	//bot.Debug = true
 
 	//log.Printf("Authorized on account %s", bot.Self.UserName)
-	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account: ", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -156,7 +160,7 @@ func (Connector *Connector) StartTelegram(ctx context.Context) {
 	//bot.Debug = true
 
 	//log.Printf("Authorized on account %s", bot.Self.UserName)
-	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account: ", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -188,15 +192,15 @@ func (Connector *Connector) StartTelegram(ctx context.Context) {
 					continue
 				}
 
-				Jsonbyte, err := json.Marshal(customer_map_data)
+				JSONbyte, err := json.Marshal(customer_map_data)
 				if err != nil {
 					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 					continue
 				}
 
-				JsonString := string(Jsonbyte)
+				JSONString := string(JSONbyte)
 
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JSONString)
 				msg.ReplyToMessageID = update.Message.MessageID
 
 				bot.Send(msg)
@@ -248,7 +252,7 @@ func (Connector *Connector) StartTelegramChan() {
 	//bot.Debug = true
 
 	//log.Printf("Authorized on account %s", bot.Self.UserName)
-	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account %s", bot.Self.UserName)
+	ConnectorV.LoggerConn.InfoLogger.Println("Authorized on account:", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -310,15 +314,15 @@ func (Connector *Connector) StartTelegramChan() {
 					continue
 				}
 
-				Jsonbyte, err := json.Marshal(Customer_struct_out)
+				JSONbyte, err := json.Marshal(Customer_struct_out)
 				if err != nil {
 					ConnectorV.LoggerConn.ErrorLogger.Println(err.Error())
 					continue
 				}
 
-				JsonString := string(Jsonbyte)
+				JSONString := string(JSONbyte)
 
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JsonString)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, JSONString)
 				msg.ReplyToMessageID = update.Message.MessageID
 
 				bot.Send(msg)
@@ -338,6 +342,8 @@ func (Connector *Connector) InitDataBase() error {
 		Connector.InitRabbitMQ()
 		Connector.ConsumeFromQueueFor1C()
 	}
+
+	Connector.Mutex = &sync.Mutex{}
 
 	switch Connector.DataBaseType {
 	case "Redis":
@@ -379,9 +385,11 @@ func (Connector *Connector) InitDataBase() error {
 		var mapForEngineCRM = make(map[string]rootsctuct.Customer_struct)
 		Connector.DemoDBmap = mapForEngineCRM
 
+		Connector.Mutex.Lock()
 		for _, p := range ArrayCustomer {
 			Connector.DemoDBmap[p.Customer_id] = p
 		}
+		Connector.Mutex.Unlock()
 
 	}
 
@@ -390,7 +398,7 @@ func (Connector *Connector) InitDataBase() error {
 
 func (Connector *Connector) ConsumeFromQueueFor1C() {
 
-	if Connector.RabbitMQ_channel == nil {
+	if Connector.RabbitMQchannel == nil {
 		err := errors.New("Connection to RabbitMQ not established")
 		Connector.LoggerConn.ErrorLogger.Println(err.Error())
 		//return nil, err
@@ -398,7 +406,7 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 
 	// var customer_map_json = make(map[string]rootsctuct.Customer_struct)
 
-	q, err := Connector.RabbitMQ_channel.QueueDeclare(
+	q, err := Connector.RabbitMQchannel.QueueDeclare(
 		"Customer___add_change", // name
 		false,                   // durable
 		false,                   // delete when unused
@@ -413,7 +421,7 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 		//return nil, err
 	}
 
-	msgs, err := Connector.RabbitMQ_channel.Consume(
+	msgs, err := Connector.RabbitMQchannel.Consume(
 		q.Name, // queue
 		"",     // consumer
 		true,   // auto-ack
@@ -446,7 +454,7 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 			}
 		}
 
-		defer Connector.RabbitMQ_channel.Close()
+		defer Connector.RabbitMQchannel.Close()
 
 	}()
 
@@ -454,14 +462,14 @@ func (Connector *Connector) ConsumeFromQueueFor1C() {
 
 func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_struct, error) {
 
-	if Connector.RabbitMQ_channel == nil {
+	if Connector.RabbitMQchannel == nil {
 		err := errors.New("Connection to RabbitMQ not established")
 		return nil, err
 	}
 
 	var customer_map_json = make(map[string]rootsctuct.Customer_struct)
 
-	q, err := Connector.RabbitMQ_channel.QueueDeclare(
+	q, err := Connector.RabbitMQchannel.QueueDeclare(
 		"Customer___add_change", // name
 		false,                   // durable
 		false,                   // delete when unused
@@ -475,7 +483,7 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 		return nil, err
 	}
 
-	msgs, err := Connector.RabbitMQ_channel.Consume(
+	msgs, err := Connector.RabbitMQchannel.Consume(
 		q.Name, // queue
 		"",     // consumer
 		true,   // auto-ack
@@ -529,7 +537,7 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 
 	wg.Wait()
 
-	Connector.RabbitMQ_channel.Close()
+	Connector.RabbitMQchannel.Close()
 	Connector.InitRabbitMQ()
 
 	return customer_map_json, nil
@@ -538,12 +546,12 @@ func (Connector *Connector) ConsumeFromQueue() (map[string]rootsctuct.Customer_s
 
 func (Connector *Connector) SendInQueue(Customer_struct rootsctuct.Customer_struct) error {
 
-	if Connector.RabbitMQ_channel == nil {
+	if Connector.RabbitMQchannel == nil {
 		err := errors.New("Connection to RabbitMQ not established")
 		return err
 	}
 
-	q, err := Connector.RabbitMQ_channel.QueueDeclare(
+	q, err := Connector.RabbitMQchannel.QueueDeclare(
 		"Customer___add_change", // name
 		false,                   // durable
 		false,                   // delete when unused
@@ -560,7 +568,7 @@ func (Connector *Connector) SendInQueue(Customer_struct rootsctuct.Customer_stru
 		return err
 	}
 
-	err = Connector.RabbitMQ_channel.Publish(
+	err = Connector.RabbitMQchannel.Publish(
 		"",     // exchange
 		q.Name, // routing key
 		false,  // mandatory
@@ -646,7 +654,7 @@ func (Connector *Connector) InitRabbitMQ() error {
 	conn, err := amqp.Dial(Connector.Global_settings.AddressRabbitMQ) //5672
 	if err != nil {
 		Connector.LoggerConn.ErrorLogger.Println("Failed to connect to RabbitMQ")
-		Connector.RabbitMQ_channel = nil
+		Connector.RabbitMQchannel = nil
 		return err
 	}
 	//defer conn.Close()
@@ -654,12 +662,12 @@ func (Connector *Connector) InitRabbitMQ() error {
 	ch, err := conn.Channel()
 	if err != nil {
 		Connector.LoggerConn.ErrorLogger.Println("Failed to open a channel")
-		Connector.RabbitMQ_channel = nil
+		Connector.RabbitMQchannel = nil
 		return err
 	}
 	//defer ch.Close()
 
-	Connector.RabbitMQ_channel = ch
+	Connector.RabbitMQchannel = ch
 
 	return nil
 }
@@ -1551,7 +1559,11 @@ func (Connector *Connector) GetAllCustomer(DataBaseType string) (map[string]root
 		return customer_map_json, nil
 
 	default:
-		return Connector.DemoDBmap, nil
+		Connector.Mutex.Lock()
+		DemoDBmap := Connector.DemoDBmap
+		Connector.Mutex.Unlock()
+
+		return DemoDBmap, nil
 	}
 
 }
@@ -1562,35 +1574,31 @@ func (Connector *Connector) AddChangeOneRow(DataBaseType string, Customer_struct
 
 	case "MongoDB":
 
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		SingleResult := Connector.CollectionMongoDB.FindOne(context.TODO(), bson.M{"customer_id": Customer_struct.Customer_id})
+		if SingleResult.Err() != nil {
+			insertResult, err := Connector.CollectionMongoDB.InsertOne(context.TODO(), Customer_struct)
+			if err != nil {
+				return err
+			}
+			fmt.Println(insertResult.InsertedID)
 
-		//maybe use? insertMany(): добавляет несколько документов
-		//before adding find db.users.find()
+		} else {
 
-		insertResult, err := Connector.CollectionMongoDB.InsertOne(ctx, Customer_struct)
-		if err != nil {
-			return err
+			UpdateResult, err := Connector.CollectionMongoDB.UpdateOne(context.TODO(), bson.M{"customer_id": Customer_struct.Customer_id},
+				bson.M{"$set": bson.M{
+					"customer_id":    Customer_struct.Customer_id,
+					"customer_name":  Customer_struct.Customer_name,
+					"customer_type":  Customer_struct.Customer_type,
+					"customer_email": Customer_struct.Customer_email,
+				}})
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(UpdateResult)
 		}
-		fmt.Println(insertResult.InsertedID)
 
-		// This update function can use the separate Update and Paste pre-search?
-
-		// opts := options.Update().SetUpsert(true)
-		// filter := bson.D{{"customer_id", Customer_struct.Customer_id}}
-		// update := bson.D{{"$set", bson.D{{"customer_name", Customer_struct.Customer_name}, {"customer_type", Customer_struct.Customer_type}, {"customer_email", Customer_struct.Customer_email}}}}
-
-		// result, err := EngineCRMv.collectionMongoDB.UpdateOne(context.TODO(), filter, update, opts)
-		// if err != nil {
-		// 	ErrorLogger.Println(err.Error())
-		// 	return err.Error()
-		// }
-
-		// if result.MatchedCount != 0 {
-		// 	fmt.Println("matched and replaced an existing document")
-		// }
-		// if result.UpsertedCount != 0 {
-		// 	fmt.Printf("inserted a new document with ID %v\n", result.UpsertedID)
-		// }
 	case "Redis":
 
 		JsonStr, err := json.Marshal(Customer_struct)
@@ -1623,7 +1631,9 @@ func (Connector *Connector) AddChangeOneRow(DataBaseType string, Customer_struct
 		}
 
 	default:
+		Connector.Mutex.Lock()
 		Connector.DemoDBmap[Customer_struct.Customer_id] = Customer_struct
+		Connector.Mutex.Unlock()
 	}
 
 	return nil
@@ -1742,7 +1752,9 @@ func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_se
 		return Customer_struct_out, nil
 
 	default:
+		Connector.Mutex.Lock()
 		Customer_struct_out = Connector.DemoDBmap[id]
+		Connector.Mutex.Unlock()
 	}
 
 	return Customer_struct_out, nil
@@ -1753,7 +1765,8 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 	switch DataBaseType {
 	case "MongoDB":
 
-		res, err := Connector.CollectionMongoDB.DeleteOne(context.TODO(), bson.D{{"customer_id", id}})
+		//res, err := Connector.CollectionMongoDB.DeleteOne(context.TODO(), bson.D{{"customer_id", id}})
+		res, err := Connector.CollectionMongoDB.DeleteMany(context.TODO(), bson.M{"customer_id": id})
 		if err != nil {
 			return err
 		}
@@ -1809,10 +1822,12 @@ func (Connector *Connector) DeleteOneRow(DataBaseType string, id string, Global_
 		return nil
 
 	default:
+		Connector.Mutex.Lock()
 		_, ok := Connector.DemoDBmap[id]
 		if ok {
 			delete(Connector.DemoDBmap, id)
 		}
+		Connector.Mutex.Unlock()
 	}
 
 	return nil
