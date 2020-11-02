@@ -1,0 +1,158 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API description",
+        "title": "Swagger API Connector for 1C Enterprise",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Dmitry",
+            "url": "https://github.com/dmitry-msk777/Connector_1C_Enterprise"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8181",
+    "basePath": "/v2",
+    "paths": {
+        "/api_json": {
+            "post": {
+                "description": "Get-Set Customer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Exchange Customer",
+                "operationId": "Exchange-Customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id_customer",
+                        "name": "id_customer",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rootdescription.Customer_struct"
+                            }
+                        },
+                        "headers": {
+                            "Token": {
+                                "type": "string",
+                                "description": "qwerty"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/list_customer": {
+            "get": {
+                "description": "Get all Customer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all Customer",
+                "operationId": "Get-all-Customer",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rootdescription.Customer_struct"
+                            }
+                        },
+                        "headers": {
+                            "Token": {
+                                "type": "string",
+                                "description": "qwerty"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "rootdescription.Address_Struct": {
+            "type": "object",
+            "properties": {
+                "house": {
+                    "type": "integer"
+                },
+                "street": {
+                    "type": "string"
+                }
+            }
+        },
+        "rootdescription.Customer_struct": {
+            "type": "object",
+            "properties": {
+                "address_Struct": {
+                    "$ref": "#/definitions/rootdescription.Address_Struct"
+                },
+                "customer_email": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "customer_name": {
+                    "type": "string"
+                },
+                "customer_type": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

@@ -24,6 +24,9 @@ import (
 	"io/ioutil"
 
 	"github.com/beevik/etree"
+
+	_ "github.com/dmitry-msk777/Connector_1C_Enterprise/docs"
+	httpSwagger "github.com/swaggo/http-swagger" // http-swagger middleware
 )
 
 func Settings(w http.ResponseWriter, r *http.Request) {
@@ -242,6 +245,19 @@ func log1C_xml(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// API JSON GET godoc
+// @Summary Exchange Customer
+// @Description Get-Set Customer
+// @ID Exchange-Customer
+// @Accept  json
+// @Produce  json
+// @Param id_customer query string false "id_customer"
+// @Success 200 {array} rootsctuct.Customer_struct
+// @Header 200 {string} Token "qwerty"
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /api_json [post]
 func Api_json(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
@@ -326,6 +342,18 @@ func Api_json(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// API JSON godoc
+// @Summary Get all Customer
+// @Description Get all Customer
+// @ID Get-all-Customer
+// @Accept  json
+// @Produce  json
+// @Success 200 {array} rootsctuct.Customer_struct
+// @Header 200 {string} Token "qwerty"
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /list_customer [get]
 func List_customer(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/list_customer.html", "templates/header.html")
@@ -997,12 +1025,36 @@ func log1C_zip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @title Swagger API Connector for 1C Enterprise
+// @version 1.0
+
+// @description API description
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Dmitry
+// @contact.url https://github.com/dmitry-msk777/Connector_1C_Enterprise
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8181
+// @BasePath /v2
+
 func StratHandlers() {
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", Settings)
 	router.HandleFunc("/settings", Settings)
+
+	// https://github.com/swaggo/swag
+	// swag init -g handlers/handlers.go
+	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:8181/swagger/doc.json"), //The url pointing to API definition
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("none"),
+		httpSwagger.DomID("#swagger-ui"),
+	))
 
 	router.HandleFunc("/rabbitMQ_1C", RabbitMQ_1C)
 	router.HandleFunc("/log1C_xml", log1C_xml)
