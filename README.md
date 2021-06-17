@@ -1,4 +1,4 @@
-## Connector for 1C:Enterprise
+ ## Connector for 1C:Enterprise
 Коннетктор написанный на Golang для 1C:Предприятия (REST подход)
 
 ### RabbitMQ
@@ -22,6 +22,10 @@
 Добавление, Измениние данных, удаление  
 Шаблон для OData  
 Описание: https://infostart.ru/public/1300482/
+
+### Докеризация, Начальная оркестрами, CD\CI
+Добавлен GitHub Action, Файлы докера  
+Описание: https://infostart.ru/public/1460412/
 
 ### Дополнительные функции:
 Шаблон получения данных через Telegram Bot  
