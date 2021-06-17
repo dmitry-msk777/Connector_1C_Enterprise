@@ -24,7 +24,7 @@
 Описание: https://infostart.ru/public/1300482/
 
 ### Докеризация, Начальная оркестрами, CD\CI
-Добавлен GitHub Action, Файлы докера 
+Добавлен GitHub Action, Файлы докера  
 Описание: https://infostart.ru/public/1460412/
 
 ### Дополнительные функции:
