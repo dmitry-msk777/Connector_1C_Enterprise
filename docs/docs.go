@@ -32,36 +32,34 @@ var doc = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api_json": {
-            "post": {
-                "description": "Get-Set Customer",
+        "/getcounttable/{TableName}": {
+            "get": {
+                "description": "Получить количество записей в таблице",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Exchange Customer",
-                "operationId": "Exchange-Customer",
+                "summary": "GetCountTable",
+                "operationId": "get-count-table",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id_customer",
-                        "name": "id_customer",
-                        "in": "query"
+                        "description": "TableName",
+                        "name": "TableName",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/rootdescription.Customer_struct"
-                            }
+                            "$ref": "#/definitions/models.ColumnsStruct"
                         },
                         "headers": {
-                            "Token": {
+                            "TokenBearer": {
                                 "type": "string",
                                 "description": "qwerty"
                             }
@@ -74,13 +72,19 @@ var doc = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "default": {
+                        "description": "",
                         "schema": {
                             "type": "string"
                         }
@@ -88,28 +92,34 @@ var doc = `{
                 }
             }
         },
-        "/list_customer": {
+        "/getdescription/{TableName}": {
             "get": {
-                "description": "Get all Customer",
+                "description": "Получить описание полей таблицы",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get all Customer",
-                "operationId": "Get-all-Customer",
+                "summary": "GetDescription",
+                "operationId": "get-description",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TableName",
+                        "name": "TableName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/rootdescription.Customer_struct"
-                            }
+                            "$ref": "#/definitions/models.ColumnsStruct"
                         },
                         "headers": {
-                            "Token": {
+                            "TokenBearer": {
                                 "type": "string",
                                 "description": "qwerty"
                             }
@@ -122,13 +132,19 @@ var doc = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "default": {
+                        "description": "",
                         "schema": {
                             "type": "string"
                         }
@@ -138,34 +154,20 @@ var doc = `{
         }
     },
     "definitions": {
-        "rootdescription.Address_Struct": {
+        "models.ColumnsStruct": {
             "type": "object",
             "properties": {
-                "house": {
-                    "type": "integer"
-                },
-                "street": {
-                    "type": "string"
-                }
-            }
-        },
-        "rootdescription.Customer_struct": {
-            "type": "object",
-            "properties": {
-                "address_Struct": {
-                    "$ref": "#/definitions/rootdescription.Address_Struct"
-                },
-                "customer_email": {
+                "columnName": {
                     "type": "string"
                 },
-                "customer_id": {
+                "dataType": {
                     "type": "string"
                 },
-                "customer_name": {
+                "isNullable": {
                     "type": "string"
                 },
-                "customer_type": {
-                    "type": "string"
+                "primaryKey": {
+                    "type": "boolean"
                 }
             }
         }
@@ -184,7 +186,7 @@ type swaggerInfo struct {
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = swaggerInfo{
 	Version:     "1.0",
-	Host:        "localhost:8181",
+	Host:        "localhost:8080",
 	BasePath:    "/v2",
 	Schemes:     []string{},
 	Title:       "Swagger API Connector for 1C Enterprise",

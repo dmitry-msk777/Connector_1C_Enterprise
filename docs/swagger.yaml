@@ -1,26 +1,17 @@
 basePath: /v2
 definitions:
-  rootdescription.Address_Struct:
+  models.ColumnsStruct:
     properties:
-      house:
-        type: integer
-      street:
+      columnName:
         type: string
+      dataType:
+        type: string
+      isNullable:
+        type: string
+      primaryKey:
+        type: boolean
     type: object
-  rootdescription.Customer_struct:
-    properties:
-      address_Struct:
-        $ref: '#/definitions/rootdescription.Address_Struct'
-      customer_email:
-        type: string
-      customer_id:
-        type: string
-      customer_name:
-        type: string
-      customer_type:
-        type: string
-    type: object
-host: localhost:8181
+host: localhost:8080
 info:
   contact:
     name: Dmitry
@@ -33,16 +24,17 @@ info:
   title: Swagger API Connector for 1C Enterprise
   version: "1.0"
 paths:
-  /api_json:
-    post:
+  /getcounttable/{TableName}:
+    get:
       consumes:
       - application/json
-      description: Get-Set Customer
-      operationId: Exchange-Customer
+      description: Получить количество записей в таблице
+      operationId: get-count-table
       parameters:
-      - description: id_customer
-        in: query
-        name: id_customer
+      - description: TableName
+        in: path
+        name: TableName
+        required: true
         type: string
       produces:
       - application/json
@@ -50,56 +42,66 @@ paths:
         "200":
           description: OK
           headers:
-            Token:
+            TokenBearer:
               description: qwerty
               type: string
           schema:
-            items:
-              $ref: '#/definitions/rootdescription.Customer_struct'
-            type: array
+            $ref: '#/definitions/models.ColumnsStruct'
         "400":
           description: Bad Request
           schema:
             type: string
         "404":
-          description: Not Found
+          description: Bad Request
           schema:
             type: string
         "500":
           description: Internal Server Error
           schema:
             type: string
-      summary: Exchange Customer
-  /list_customer:
+        default:
+          description: ""
+          schema:
+            type: string
+      summary: GetCountTable
+  /getdescription/{TableName}:
     get:
       consumes:
       - application/json
-      description: Get all Customer
-      operationId: Get-all-Customer
+      description: Получить описание полей таблицы
+      operationId: get-description
+      parameters:
+      - description: TableName
+        in: path
+        name: TableName
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           headers:
-            Token:
+            TokenBearer:
               description: qwerty
               type: string
           schema:
-            items:
-              $ref: '#/definitions/rootdescription.Customer_struct'
-            type: array
+            $ref: '#/definitions/models.ColumnsStruct'
         "400":
           description: Bad Request
           schema:
             type: string
         "404":
-          description: Not Found
+          description: Bad Request
           schema:
             type: string
         "500":
           description: Internal Server Error
           schema:
             type: string
-      summary: Get all Customer
+        default:
+          description: ""
+          schema:
+            type: string
+      summary: GetDescription
 swagger: "2.0"

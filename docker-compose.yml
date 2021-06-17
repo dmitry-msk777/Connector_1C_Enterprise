@@ -1,0 +1,12 @@
+version: '3.0'
+services:
+  go-example-sqlquerybuilder:
+    image: "go-example-sqlquerybuilder:dev"
+    ports:
+      - "8081-8083:8080"
+    hostname: go-example-sqlquerybuilder
+    environment:
+      DB_DIALECT: ${DB_DIALECT}
+      DB_CONNECTION: ${DB_CONNECTION}
+      MESSAGE_PATH: ${MESSAGE_PATH}
+    restart: always 
