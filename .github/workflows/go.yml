@@ -143,10 +143,10 @@ jobs:
           password: ${{ secrets.CR_PAT }}
 
       - name: docker tag image to gitlab
-        run: docker tag grpc_example ghcr.io/dmitry-msk777/Connector_1C_Enterprise/go-example-sqlquerybuilder:test_tag
+        run: docker tag grpc_example ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
       
       - name: Push image to gitlab
-        run: docker push ghcr.io/dmitry-msk777/Connector_1C_Enterprise/go-example-sqlquerybuilder:test_tag
+        run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
 
 # TODO: Дополнительно Адаптировать код ниже при разных ветках и развертывания аналогичных меток
 #- name: Push image
