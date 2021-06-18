@@ -143,7 +143,7 @@ jobs:
           password: ${{ secrets.CR_PAT }}
 
       - name: docker tag image to GitHub
-        run: docker tag go-example-sqlquerybuilder ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
+        run: docker tag test_tag ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
       
       - name: Push image to GitHub
         run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
