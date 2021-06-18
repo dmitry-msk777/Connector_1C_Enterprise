@@ -142,10 +142,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.CR_PAT }}
 
-      - name: docker tag image to gitlab
-        run: docker tag grpc_example ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
+      - name: docker tag image to GitHub
+        run: docker tag test_tag ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
       
-      - name: Push image to gitlab
+      - name: Push image to GitHub
         run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
 
 # TODO: Дополнительно Адаптировать код ниже при разных ветках и развертывания аналогичных меток
