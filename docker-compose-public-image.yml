@@ -1,7 +1,7 @@
 version: '3.0'
 services:
   go-example-sqlquerybuilder:
-    image: "go-example-sqlquerybuilder:dev"
+    image: "ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest"
     ports:
       - "8081:8080"
     hostname: go-example-sqlquerybuilder
