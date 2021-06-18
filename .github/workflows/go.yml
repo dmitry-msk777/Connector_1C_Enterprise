@@ -142,11 +142,25 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.CR_PAT }}
 
-      - name: docker tag image to GitHub
-        run: docker tag latest ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
-      
-      - name: Push image to GitHub
-        run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
+      - name: docker tag image and Push image to GitHub
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          echo docker tag = $IMAGE_NAME $IMAGE_ID:$VERSION
+          echo docker push = $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+        # docker tag latest ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
+        # docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
 
 # TODO: Дополнительно Адаптировать код ниже при разных ветках и развертывания аналогичных меток
 #- name: Push image
