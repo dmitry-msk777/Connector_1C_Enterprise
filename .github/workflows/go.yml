@@ -84,3 +84,85 @@ jobs:
           docker tag latest registry.gitlab.com/smartaccount/backend-stack/registriesimagestore/$IMAGE_NAME:$VERSION
           docker push registry.gitlab.com/smartaccount/backend-stack/registriesimagestore/$IMAGE_NAME:$VERSION
           echo $IMAGE_NAME:$VERSION
+
+    - name: Step 1 - Create a temporary artifact downloads folder
+      run: |
+        mkdir imageDoker
+        cp ${IMAGE_NAME}-linux64 imageDoker
+        cd imageDoker
+        ls
+      
+    - name: Step 3 - Use the Upload Artifact GitHub Action
+      uses: actions/upload-artifact@v2
+      with: 
+        name: imageDoker-art
+        path: imageDoker
+
+
+  # Push image to GitHub Packages...
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    # Ensure test job passes before pushing image.
+    needs: build
+
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Step 1 - Create a temporary artifact downloads folder
+        run: mkdir imageDoker
+
+      - name: Download math result for job 1
+        uses: actions/download-artifact@v2
+        with: 
+          name: imageDoker-art
+          path: imageDoker
+          
+      - name: Step 1 - Create a temporary artifact downloads folder
+        run: |
+          cd imageDoker
+          ls
+          cd ..
+          cp imageDoker/${IMAGE_NAME}-linux64 ${IMAGE_NAME}-linux64
+          # mkdir imageDoker
+          # cp ${IMAGE_NAME}-linux64 imageDoker
+          # При копировании из артефакта в новый этап, файл теряет метки как исполняемый, восстановим этот режим
+          chmod +x ${IMAGE_NAME}-linux64
+          
+      - name: Build image
+        # run: docker build . --file Dockerfile --tag grpc_example
+        run: docker build . --file Dockerfile --tag latest
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: docker tag image to gitlab
+        run: docker tag grpc_example ghcr.io/dmitry-msk777/Connector_1C_Enterprise/go-example-sqlquerybuilder:test_tag
+      
+      - name: Push image to gitlab
+        run: docker push ghcr.io/dmitry-msk777/Connector_1C_Enterprise/go-example-sqlquerybuilder:test_tag
+
+# TODO: Дополнительно Адаптировать код ниже при разных ветках и развертывания аналогичных меток
+#- name: Push image
+#        run: |
+#          IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+#          # Change all uppercase to lowercase
+#          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+#          # Strip git ref prefix from version
+#          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+#          # Strip "v" prefix from tag name
+#          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+#          # Use Docker `latest` tag convention
+#          [ "$VERSION" == "master" ] && VERSION=latest
+#          echo IMAGE_ID=$IMAGE_ID
+#          echo VERSION=$VERSION
+#          echo docker tag = $IMAGE_NAME $IMAGE_ID:$VERSION
+#          echo docker push = $IMAGE_ID:$VERSION
+#          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+#          docker push $IMAGE_ID:$VERSION
