@@ -143,10 +143,10 @@ jobs:
           password: ${{ secrets.CR_PAT }}
 
       - name: docker tag image to GitHub
-        run: docker tag test_tag ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
+        run: docker tag latest ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
       
       - name: Push image to GitHub
-        run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/go-example-sqlquerybuilder:test_tag
+        run: docker push ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest 
 
 # TODO: Дополнительно Адаптировать код ниже при разных ветках и развертывания аналогичных меток
 #- name: Push image
