@@ -1,0 +1,19 @@
+version: '3.3'
+services:
+  go-example-sqlquerybuilder:
+    image: ghcr.io/dmitry-msk777/connector_1c_enterprise/connector_1c_enterprise:latest
+    environment:
+      GIN_MODE: release
+    ports:
+     - 8101:8080
+    networks:
+     - go-example-networks
+    logging:
+      driver: json-file
+    deploy:
+      replicas: 80
+      labels:
+        swarmpit.service.deployment.autoredeploy: 'true'
+networks:
+  go-example-networks:
+    driver: overlay
