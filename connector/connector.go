@@ -1679,7 +1679,7 @@ func (Connector *Connector) FindOneRow(DataBaseType string, id string, Global_se
 	switch DataBaseType {
 	case "MongoDB":
 
-		err := Connector.CollectionMongoDB.FindOne(context.TODO(), bson.D{{"customer_id", id}}).Decode(&Customer_struct_out)
+		err := Connector.CollectionMongoDB.FindOne(context.TODO(), bson.D{{Key: "customer_id", Value: id}}).Decode(&Customer_struct_out)
 		if err != nil {
 			// ErrNoDocuments means that the filter did not match any documents in the collection
 			if err == mongo.ErrNoDocuments {
