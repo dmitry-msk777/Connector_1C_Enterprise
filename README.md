@@ -1,5 +1,13 @@
- ## Connector for 1C:Enterprise
-Коннетктор написанный на Golang для 1C:Предприятия (REST подход)
+<p align="center">
+  <img src="https://infostart.ru/bitrix/templates/sandbox_empty/assets/tpl/abo/img/logo.svg" alt="Logo" width="220"/>
+</p>
+
+<h1 align="center">Connector for 1C:Enterprise</h1>
+
+<p align="center">
+  Коннектор, написанный на Golang для 1C:Предприятия<br>
+  REST API подход для интеграции внешних сервисов
+</p>
 
 ### RabbitMQ
 Реализованы методы передачи в шину сообщений, а также их получения.  
